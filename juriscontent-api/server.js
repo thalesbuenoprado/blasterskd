@@ -1,0 +1,807 @@
+const express = require('express');
+const cors = require('cors');
+const { createCanvas, loadImage, registerFont } = require('canvas');
+const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+// ================================================
+// SUPABASE - AUTENTICAÇÃO
+// ================================================
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+// Middleware de autenticação
+async function authMiddleware(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token não fornecido' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
+    }
+    
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Erro auth:', error.message);
+    return res.status(401).json({ error: 'Erro na autenticação' });
+  }
+}
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+const TRENDING_FILE = path.join(__dirname, 'trending-topics.json');
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Não permitido pelo CORS'));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dgf3hzmb8',
+  api_key: process.env.CLOUDINARY_API_KEY || '239768197523983',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'PVPOJkaWTJcMIJn5Nsn-_h9BWJk'
+});
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'JurisContent Backend v2.0 - IA Integrada',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ================================================
+// FUNÇÕES AUXILIARES PARA CANVAS
+// ================================================
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+  for (const word of words) {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function drawTextWithShadow(ctx, text, x, y, shadowColor = 'rgba(0,0,0,0.8)', shadowBlur = 10) {
+  ctx.save();
+  ctx.shadowColor = shadowColor;
+  ctx.shadowBlur = shadowBlur;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// ================================================
+// FUNÇÃO: Caixa Premium com Gradiente e Borda
+// ================================================
+function drawPremiumBox(ctx, x, y, width, height, options = {}) {
+  const {
+    radius = 24,
+    opacity = 0.85,
+    gradient = true,
+    borderColor = 'rgba(212, 175, 55, 0.4)',
+    borderWidth = 2,
+    shadowBlur = 20,
+    style = 'default' // 'default', 'accent', 'subtle'
+  } = options;
+
+  ctx.save();
+
+  // Sombra externa
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = shadowBlur;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 4;
+
+  // Fundo com gradiente
+  if (gradient) {
+    const grad = ctx.createLinearGradient(x, y, x, y + height);
+    if (style === 'accent') {
+      grad.addColorStop(0, `rgba(30, 58, 95, ${opacity})`);
+      grad.addColorStop(1, `rgba(13, 27, 42, ${opacity + 0.1})`);
+    } else if (style === 'subtle') {
+      grad.addColorStop(0, `rgba(20, 20, 25, ${opacity - 0.1})`);
+      grad.addColorStop(1, `rgba(10, 10, 15, ${opacity})`);
+    } else {
+      grad.addColorStop(0, `rgba(15, 23, 42, ${opacity})`);
+      grad.addColorStop(1, `rgba(5, 10, 20, ${opacity + 0.1})`);
+    }
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = `rgba(10, 15, 25, ${opacity})`;
+  }
+
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.fill();
+
+  // Borda dourada sutil
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = borderWidth;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// Função legada para compatibilidade
+function drawDarkBox(ctx, x, y, width, height, radius = 20, opacity = 0.75) {
+  drawPremiumBox(ctx, x, y, width, height, { radius, opacity, gradient: true });
+}
+
+function drawMultilineText(ctx, lines, x, y, lineHeight, align = 'center') {
+  ctx.textAlign = align;
+  for (let i = 0; i < lines.length; i++) {
+    drawTextWithShadow(ctx, lines[i], x, y + (i * lineHeight));
+  }
+}
+
+// ================================================
+// FUNÇÃO: Gerar conteúdo via IA (n8n)
+// ================================================
+async function gerarConteudoIA(texto, tema, area, template) {
+  const prompts = {
+    'voce-sabia': `Você é um especialista em marketing jurídico. Analise o conteúdo e crie um texto CURTO para Story do Instagram.
+
+CONTEÚDO ORIGINAL:
+${texto}
+
+TEMA: ${tema}
+ÁREA: ${area}
+
+REGRAS IMPORTANTES:
+1. O campo "resposta" deve ter NO MÁXIMO 180 caracteres
+2. A frase deve ser COMPLETA (terminar com ponto final)
+3. Seja direto e profissional
+4. NÃO repita "Você sabia" na resposta
+
+Retorne APENAS este JSON (sem markdown, sem explicações):
+{"pergunta":"${tema}","resposta":"TEXTO AQUI - máx 180 caracteres, frase completa","destaque":"CONHEÇA SEUS DIREITOS"}`,
+
+    'bullets': `Você é um especialista em marketing jurídico. Crie um texto CURTO para Story do Instagram.
+
+CONTEÚDO: ${texto}
+TEMA: ${tema}
+ÁREA: ${area}
+
+Retorne APENAS este JSON:
+{"headline":"Título curto sobre ${tema}","bullets":["Ponto 1 curto","Ponto 2 curto","Ponto 3 curto"],"cta":"Salve este post!"}`,
+
+    'estatistica': `Você é um especialista em marketing jurídico para Instagram Stories.
+
+CONTEÚDO ORIGINAL: ${texto}
+TEMA: ${tema}
+ÁREA: ${area}
+
+INSTRUÇÕES:
+1. NÚMERO: Use estatística REAL e VARIADA (não sempre 80%). Pode ser: porcentagem (45%, 67%), valor (R$ 5.000), tempo (5 anos), quantidade (3 em cada 10)
+2. CONTEXTO: Frase curta explicando o número (5-8 palavras)
+3. EXPLICAÇÃO: Texto informativo de 3-4 frases (250-350 caracteres). Explique o impacto, as consequências e o que o leitor deve saber.
+
+Retorne APENAS este JSON:
+{"headline":"Título impactante (8-12 palavras)","estatistica":{"numero":"DADO VARIADO","contexto":"O que representa (5-8 palavras)","explicacao":"Texto completo com 3-4 frases explicando o contexto, impacto e importância. Mínimo 250 caracteres. Seja informativo e direto."}}`,
+
+    'urgente': `Você é um especialista em marketing jurídico para Instagram Stories de ALERTA.
+
+CONTEÚDO ORIGINAL: ${texto}
+TEMA: ${tema}
+ÁREA: ${area}
+
+INSTRUÇÕES:
+1. ALERTA: Título urgente e impactante (8-12 palavras) - use palavras como "ATENÇÃO", "CUIDADO", "URGENTE"
+2. PRAZO: Se houver prazo específico, coloque (ex: "30 dias", "Até dezembro", "5 anos"). Se não houver, deixe vazio ""
+3. RISCO: Explique as CONSEQUÊNCIAS de não agir. Texto de 3-4 frases (200-300 caracteres). Seja específico sobre o que a pessoa pode perder.
+4. AÇÃO: O que fazer AGORA (frase imperativa curta, 8-10 palavras)
+
+Retorne APENAS este JSON:
+{"alerta":"ATENÇÃO: Título urgente sobre ${tema}","prazo":"Prazo específico ou vazio","risco":"Consequências detalhadas em 3-4 frases. Explique o que acontece se não agir, quais direitos perde, qual o impacto financeiro. Mínimo 200 caracteres.","acao":"Consulte um advogado especialista agora"}`,
+
+    'premium': `Você é um especialista em marketing jurídico. Crie um texto CURTO para Story do Instagram.
+
+CONTEÚDO: ${texto}
+TEMA: ${tema}
+ÁREA: ${area}
+
+REGRAS: O campo "insight" deve ter NO MÁXIMO 180 caracteres e ser uma frase COMPLETA.
+
+Retorne APENAS este JSON:
+{"headline":"Título elegante sobre ${tema}","insight":"TEXTO AQUI - máx 180 caracteres, frase completa","conclusao":"Conclusão curta"}`
+  };
+
+  const prompt = prompts[template] || prompts['voce-sabia'];
+
+  try {
+    console.log('🤖 Chamando IA para template:', template);
+    
+    const response = await fetch('http://localhost:5678/webhook/juridico-working', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) {
+      throw new Error(`N8N erro: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const textoIA = data.content || '';
+    
+    console.log('📝 Resposta IA:', textoIA.substring(0, 300));
+
+    // Extrair JSON
+    const jsonMatch = textoIA.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log('✅ JSON parseado:', JSON.stringify(parsed).substring(0, 200));
+      return parsed;
+    }
+    
+    throw new Error('JSON não encontrado');
+  } catch (error) {
+    console.log('⚠️ Erro IA:', error.message);
+    return null;
+  }
+}
+
+// ================================================
+// FUNÇÃO: Fallback quando IA falha
+// ================================================
+function criarFallback(template, texto, tema) {
+  const textoLimpo = (texto || '').substring(0, 180);
+  
+  return {
+    pergunta: tema || 'Informação Jurídica',
+    resposta: textoLimpo,
+    destaque: 'CONHEÇA SEUS DIREITOS',
+    headline: tema || 'Informação Jurídica',
+    bullets: [],
+    estatistica: { numero: '', contexto: '', explicacao: '' },
+    cta: 'Siga para mais dicas'
+  };
+}
+
+// ================================================
+// ROTA: GERAR STORY (com IA integrada)
+// ================================================
+app.post('/api/gerar-story', authMiddleware, async (req, res) => {
+  try {
+    const {
+      texto,
+      tema,
+      area,
+      template,
+      perfil_visual,
+      nome_advogado,
+      oab,
+      telefone,
+      instagram,
+      logo
+    } = req.body;
+
+    if (!template) {
+      return res.status(400).json({ error: 'Template obrigatório' });
+    }
+
+    console.log('📱 Gerando Story:', { template, area, tema, temLogo: !!logo });
+
+    // 1. Tentar gerar conteúdo via IA
+    let dadosProcessados = await gerarConteudoIA(texto, tema, area, template);
+    
+    // 2. Se falhar, usar fallback
+    if (!dadosProcessados) {
+      console.log('⚠️ Usando fallback');
+      dadosProcessados = criarFallback(template, texto, tema);
+    }
+
+    // 3. Enviar para Puppeteer
+    const PUPPETEER_URL = process.env.PUPPETEER_URL || 'http://localhost:3002/render-story';
+
+    const storyData = {
+      template,
+      data: {
+        corPrimaria: perfil_visual?.cor_primaria || '#1e3a5f',
+        corSecundaria: perfil_visual?.cor_secundaria || '#d4af37',
+        corFundo: perfil_visual?.cor_fundo || '#0d1b2a',
+        nomeAdvogado: nome_advogado || '',
+        oab: oab || '',
+        telefone: telefone || '',
+        instagram: instagram || '',
+        iniciais: nome_advogado 
+          ? nome_advogado.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+          : '',
+        area: area || '',
+        tema: tema || '',
+        logo: logo || '',
+        ...dadosProcessados
+      }
+    };
+
+    console.log('🎨 Enviando para Puppeteer...');
+    
+    const response = await fetch(PUPPETEER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(storyData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Puppeteer erro: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.image) {
+      throw new Error('Falha ao gerar imagem do Story');
+    }
+
+    console.log('📤 Upload para Cloudinary...');
+    const uploadResult = await cloudinary.uploader.upload(data.image, {
+      folder: 'juridico-stories',
+      format: 'png'
+    });
+
+    console.log('✅ Story gerado:', uploadResult.secure_url);
+
+    res.json({
+      success: true,
+      imageUrl: uploadResult.secure_url,
+      template: template,
+      renderTimeMs: data.renderTimeMs
+    });
+
+  } catch (error) {
+    console.error('❌ Erro gerar story:', error);
+    res.status(500).json({
+      error: 'Erro ao gerar story',
+      details: error.message
+    });
+  }
+});
+
+// ================================================
+// ROTA: GERAR IMAGEM FEED - DESIGN PREMIUM v2
+// ================================================
+app.post('/api/gerar-imagem', authMiddleware, async (req, res) => {
+  try {
+    const { 
+      imageUrl, tema, area, nomeAdvogado, oab, instagram, formato, estilo, logo, bullets, conteudo,
+      corPrimaria, corSecundaria, corAcento
+    } = req.body;
+
+    if (!imageUrl) return res.status(400).json({ error: 'URL da imagem obrigatória' });
+
+    console.log('🖼️ Gerando imagem Feed PREMIUM:', { formato, estilo, area });
+
+    // Paletas de cores melhoradas
+    const paletas = {
+      classico: { 
+        text: '#FFFFFF', 
+        accent: corSecundaria || '#D4AF37', 
+        secondary: '#94A3B8',
+        border: 'rgba(212, 175, 55, 0.4)'
+      },
+      moderno: { 
+        text: '#FFFFFF', 
+        accent: corSecundaria || '#FACC15', 
+        secondary: '#A1A1AA',
+        border: 'rgba(250, 204, 21, 0.4)'
+      },
+      executivo: { 
+        text: '#FFFFFF', 
+        accent: corSecundaria || '#C9A050', 
+        secondary: '#9CA3AF',
+        border: 'rgba(201, 160, 80, 0.4)'
+      },
+      acolhedor: { 
+        text: '#FFFFFF', 
+        accent: corSecundaria || '#FFB366', 
+        secondary: '#D4D4D8',
+        border: 'rgba(255, 179, 102, 0.4)'
+      }
+    };
+    const cores = paletas[estilo] || paletas.classico;
+
+    const dimensoes = {
+      quadrado: { w: 1080, h: 1080 },
+      stories: { w: 1080, h: 1920 },
+      landscape: { w: 1200, h: 628 }
+    };
+    const dim = dimensoes[formato] || dimensoes.quadrado;
+
+    const canvas = createCanvas(dim.w, dim.h);
+    const ctx = canvas.getContext('2d');
+
+    // Carregar e desenhar imagem de fundo
+    const baseImage = await loadImage(imageUrl);
+    ctx.drawImage(baseImage, 0, 0, dim.w, dim.h);
+
+    const paddingH = 50;
+    const topoBoxY = 40;
+
+    // Gerar badge/tag de engajamento baseado na área
+    const badges = {
+      'Direito Penal': '⚖️ VOCÊ SABIA?',
+      'Direito Civil': '💡 DICA JURÍDICA',
+      'Direito Trabalhista': '👷 SEUS DIREITOS',
+      'Direito do Consumidor': '🛒 FIQUE ATENTO',
+      'Direito de Família': '👨‍👩‍👧 SAIBA MAIS',
+      'Direito Tributário': '📊 IMPORTANTE',
+      'Direito Empresarial': '🏢 EMPRESÁRIO',
+      'Direito Previdenciário': '🏦 APOSENTADORIA',
+      'default': '⚖️ INFORMAÇÃO JURÍDICA'
+    };
+    const badge = badges[area] || badges['default'];
+    
+    // Calcular tamanho do título
+    ctx.font = 'bold 44px Georgia';
+    const temaLines = wrapText(ctx, tema || '', dim.w - (paddingH * 2) - 60);
+    const temaBoxHeight = Math.max(200, 100 + (temaLines.length * 52));
+    
+    // CAIXA DO TOPO - Design Premium
+    drawPremiumBox(ctx, paddingH, topoBoxY, dim.w - (paddingH * 2), temaBoxHeight, {
+      radius: 28,
+      opacity: 0.88,
+      borderColor: cores.border,
+      borderWidth: 2,
+      style: 'accent'
+    });
+
+    // Badge no topo (substitui área genérica)
+    ctx.fillStyle = cores.accent;
+    ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'center';
+    drawTextWithShadow(ctx, badge, dim.w / 2, topoBoxY + 48);
+
+    // Linha decorativa abaixo do badge
+    ctx.save();
+    const lineGrad = ctx.createLinearGradient(dim.w/2 - 100, 0, dim.w/2 + 100, 0);
+    lineGrad.addColorStop(0, 'transparent');
+    lineGrad.addColorStop(0.5, cores.accent);
+    lineGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(dim.w/2 - 120, topoBoxY + 68);
+    ctx.lineTo(dim.w/2 + 120, topoBoxY + 68);
+    ctx.stroke();
+    ctx.restore();
+
+    // Título/Tema principal
+    if (tema) {
+      ctx.fillStyle = cores.text;
+      ctx.font = 'bold 44px Georgia';
+      const startY = topoBoxY + 110;
+      drawMultilineText(ctx, temaLines, dim.w / 2, startY, 52, 'center');
+    }
+
+    // CAIXA DO RODAPÉ - Design Premium
+    const rodapeBoxHeight = 130;
+    const rodapeBoxY = dim.h - rodapeBoxHeight - 40;
+    
+    drawPremiumBox(ctx, paddingH, rodapeBoxY, dim.w - (paddingH * 2), rodapeBoxHeight, {
+      radius: 28,
+      opacity: 0.90,
+      borderColor: cores.border,
+      borderWidth: 2,
+      style: 'default'
+    });
+
+    // Nome do advogado com formatação profissional
+    if (nomeAdvogado) {
+      ctx.fillStyle = cores.accent;
+      ctx.font = 'bold 34px Arial';
+      ctx.textAlign = 'center';
+      drawTextWithShadow(ctx, nomeAdvogado, dim.w / 2, rodapeBoxY + 52);
+    }
+
+    // OAB com estilo mais elegante
+    if (oab) {
+      ctx.fillStyle = cores.secondary;
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      drawTextWithShadow(ctx, oab, dim.w / 2, rodapeBoxY + 95);
+    }
+
+    // CAIXA DE BULLETS (se existirem)
+    const bulletsArray = bullets || conteudo?.bullets || [];
+    
+    if (bulletsArray.length > 0) {
+      const bulletBoxY = temaBoxHeight + topoBoxY + 30;
+      const bulletBoxHeight = Math.min(bulletsArray.length * 75 + 50, dim.h - bulletBoxY - rodapeBoxHeight - 80);
+      
+      drawPremiumBox(ctx, paddingH, bulletBoxY, dim.w - (paddingH * 2), bulletBoxHeight, {
+        radius: 24,
+        opacity: 0.82,
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 1,
+        style: 'subtle'
+      });
+      
+      const bulletStartY = bulletBoxY + 55;
+      const bulletX = paddingH + 45;
+      
+      bulletsArray.slice(0, 4).forEach((bullet, index) => {
+        const bulletText = typeof bullet === 'string' ? bullet : bullet.texto || bullet.titulo || '';
+        const y = bulletStartY + (index * 70);
+        
+        // Ícone do bullet com destaque
+        ctx.fillStyle = cores.accent;
+        ctx.font = 'bold 28px Arial';
+        drawTextWithShadow(ctx, '✓', bulletX, y);
+        
+        // Texto do bullet
+        ctx.fillStyle = cores.text;
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'left';
+        const bulletLines = wrapText(ctx, bulletText, dim.w - (paddingH * 2) - 120);
+        drawTextWithShadow(ctx, bulletLines[0] || '', bulletX + 45, y);
+      });
+    }
+
+    // LOGO com design melhorado
+    if (logo) {
+      try {
+        const logoBase64 = logo.startsWith('data:') ? logo : `data:image/png;base64,${logo}`;
+        const logoImage = await loadImage(logoBase64);
+        
+        const logoSize = 80;
+        const logoX = dim.w - logoSize - 25;
+        const logoY = topoBoxY + 15;
+        
+        // Fundo do logo com gradiente
+        ctx.save();
+        const logoGrad = ctx.createRadialGradient(
+          logoX + logoSize/2, logoY + logoSize/2, 0,
+          logoX + logoSize/2, logoY + logoSize/2, logoSize/2 + 8
+        );
+        logoGrad.addColorStop(0, 'rgba(0,0,0,0.7)');
+        logoGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = logoGrad;
+        ctx.beginPath();
+        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2 + 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Borda dourada no logo
+        ctx.strokeStyle = cores.border;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2 + 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Desenhar logo
+        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+      } catch (e) {
+        console.log('⚠️ Erro logo:', e.message);
+      }
+    }
+
+    // Gerar imagem final
+    const imageBuffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
+    const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+
+    const uploadResult = await cloudinary.uploader.upload(base64Image, {
+      folder: 'juridico-final',
+      format: 'jpg'
+    });
+
+    console.log('✅ Imagem Feed PREMIUM gerada:', uploadResult.secure_url);
+    res.json({ success: true, imageUrl: uploadResult.secure_url });
+  } catch (error) {
+    console.error('❌ Erro imagem:', error);
+    res.status(500).json({ error: 'Erro ao gerar imagem', details: error.message });
+  }
+});
+
+// ================================================
+// OUTRAS ROTAS
+// ================================================
+app.post('/api/trending-topics', (req, res) => {
+  try {
+    const { trending, dataAtualizacao } = req.body;
+    if (!trending || !Array.isArray(trending)) {
+      return res.status(400).json({ error: 'Dados inválidos' });
+    }
+    const dados = {
+      trending: trending.slice(0, 3),
+      dataAtualizacao: dataAtualizacao || new Date().toISOString(),
+      ultimaAtualizacao: new Date().toISOString()
+    };
+    fs.writeFileSync(TRENDING_FILE, JSON.stringify(dados, null, 2));
+    res.json({ success: true, count: dados.trending.length });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro trending', details: error.message });
+  }
+});
+
+app.get('/api/trending-topics', (req, res) => {
+  try {
+    if (fs.existsSync(TRENDING_FILE)) {
+      const dados = JSON.parse(fs.readFileSync(TRENDING_FILE, 'utf-8'));
+      return res.json(dados);
+    }
+    res.json({
+      trending: [
+        { tema: "Direitos do Consumidor", descricao: "Novas regras", area: "Consumidor", icone: "🛒" },
+        { tema: "Reforma Trabalhista", descricao: "Impactos", area: "Trabalhista", icone: "💼" },
+        { tema: "LGPD", descricao: "Proteção de dados", area: "Digital", icone: "🔐" }
+      ],
+      isFallback: true
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro trending' });
+  }
+});
+
+app.post('/api/analisar-logo', authMiddleware, async (req, res) => {
+  try {
+    const { logo } = req.body;
+    if (!logo) return res.status(400).json({ error: 'Logo obrigatória' });
+    const response = await fetch('http://localhost:5678/webhook/analisar-logo-v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logo })
+    });
+    if (!response.ok) throw new Error(`N8N erro: ${response.status}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro logo', details: error.message });
+  }
+});
+
+app.post('/api/gerar-conteudo', authMiddleware, async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Prompt obrigatório' });
+    const response = await fetch('http://localhost:5678/webhook/juridico-working', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!response.ok) throw new Error(`N8N erro: ${response.status}`);
+    const data = await response.json();
+    res.json({ content: data.content || data.texto || '' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro conteúdo', details: error.message });
+  }
+});
+
+app.post('/api/gerar-prompt-imagem', authMiddleware, async (req, res) => {
+  try {
+    const { tema, area, estilo, formato, texto, perfil_visual } = req.body;
+    const response = await fetch('http://localhost:5678/webhook/juridico-hibrido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tema, area, estilo, formato, texto, perfil_visual })
+    });
+    if (!response.ok) throw new Error(`N8N erro: ${response.status}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro prompt', details: error.message });
+  }
+});
+
+app.post('/api/remover-fundo', authMiddleware, async (req, res) => {
+  try {
+    let { logo } = req.body;
+    if (!logo) return res.status(400).json({ success: false, error: 'Logo não fornecida' });
+    if (logo.includes(',')) logo = logo.split(',')[1];
+
+    const https = require('https');
+    const querystring = require('querystring');
+
+    const postData = querystring.stringify({
+      image_file_b64: logo,
+      size: 'auto',
+      format: 'png'
+    });
+
+    const options = {
+      hostname: 'api.remove.bg',
+      path: '/v1.0/removebg',
+      method: 'POST',
+      headers: {
+        'X-Api-Key': process.env.REMOVEBG_API_KEY || 'cz67CSF3ZrSWHxhXuvWzVgTz',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const apiRequest = https.request(options, (apiResponse) => {
+      const chunks = [];
+      apiResponse.on('data', (chunk) => chunks.push(chunk));
+      apiResponse.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        if (apiResponse.statusCode === 200) {
+          res.json({ success: true, logoSemFundo: buffer.toString('base64'), mimeType: 'image/png' });
+        } else {
+          res.status(apiResponse.statusCode).json({ success: false, error: 'Erro API' });
+        }
+      });
+    });
+
+    apiRequest.on('error', (error) => res.status(500).json({ success: false, error: error.message }));
+    apiRequest.write(postData);
+    apiRequest.end();
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+const http = require("http");
+
+app.all("/api/n8n/*", (req, res) => {
+  const n8nPath = req.path.replace("/api/n8n", "");
+  const options = {
+    hostname: "localhost",
+    port: 5678,
+    path: n8nPath,
+    method: req.method,
+    headers: { "Content-Type": "application/json" }
+  };
+
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.status(proxyRes.statusCode);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on("error", () => res.status(500).json({ error: "Erro n8n" }));
+  if (["POST", "PUT", "PATCH"].includes(req.method) && req.body) {
+    proxyReq.write(JSON.stringify(req.body));
+  }
+  proxyReq.end();
+});
+
+app.listen(PORT, () => {
+  console.log('=================================');
+  console.log('🚀 Backend v2.1 - Design Premium');
+  console.log('=================================');
+  console.log('✅ Porta:', PORT);
+  console.log('🤖 IA: ATIVA para Stories');
+  console.log('📱 Stories: Textos otimizados');
+  console.log('🎨 Feed: Caixas Premium com gradiente');
+  console.log('✨ Badges dinâmicos por área');
+  console.log('=================================');
+});

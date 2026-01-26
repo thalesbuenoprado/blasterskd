@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\thale\\\\www\\\\juriscontent-api\" /s /b)"
+    ]
+  }
+}

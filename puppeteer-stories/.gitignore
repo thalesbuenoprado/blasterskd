@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+
+# Environment variables (Sensitive!)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+
+# Logs and backups
+*.log
+*.backup
+*.save
+*.save.*
+npm-debug.log*
+
+# System
+.DS_Store
+Thumbs.db
+
+# Puppeteer specific
+.chrome/
+screenshots/
+downloads/

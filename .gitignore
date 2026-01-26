@@ -1,0 +1,41 @@
+# Dependências
+node_modules/
+.pnp/
+.pnp.js
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+.env.save
+.env.save.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporários
+*.tmp
+*.temp

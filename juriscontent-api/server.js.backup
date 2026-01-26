@@ -1,0 +1,775 @@
+const express = require('express');
+const cors = require('cors');
+const { createCanvas, loadImage } = require('canvas');
+const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Arquivo para armazenar trending topics
+const TRENDING_FILE = path.join(__dirname, 'trending-topics.json');
+
+// CORS configurado para produção
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Permitir requisições sem origin (como mobile apps ou curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Não permitido pelo CORS'));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+
+// Cloudinary configurado via variáveis de ambiente
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dgf3hzmb8',
+  api_key: process.env.CLOUDINARY_API_KEY || '239768197523983',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'PVPOJkaWTJcMIJn5Nsn-_h9BWJk'
+});
+
+// Health check
+app.get('/', (req, res) => {
+  res.json({
+    status: 'JurisContent Backend v1.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+
+// ================================================
+// ROTA: SALVAR TRENDING TOPICS (do N8N)
+// ================================================
+app.post('/api/trending-topics', (req, res) => {
+  try {
+    const { trending, dataAtualizacao } = req.body;
+    
+    if (!trending || !Array.isArray(trending)) {
+      return res.status(400).json({ error: 'Dados de trending inválidos' });
+    }
+
+    const dados = {
+      trending: trending.slice(0, 3), // Garantir máximo 3
+      dataAtualizacao: dataAtualizacao || new Date().toISOString(),
+      ultimaAtualizacao: new Date().toISOString()
+    };
+
+    fs.writeFileSync(TRENDING_FILE, JSON.stringify(dados, null, 2));
+    console.log('✅ Trending topics salvos:', dados.trending.length, 'temas');
+    
+    res.json({ 
+      success: true, 
+      message: 'Trending topics atualizados',
+      count: dados.trending.length 
+    });
+  } catch (error) {
+    console.error('❌ Erro ao salvar trending:', error);
+    res.status(500).json({ 
+      error: 'Erro ao salvar trending topics',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA: BUSCAR TRENDING TOPICS (para o Frontend)
+// ================================================
+app.get('/api/trending-topics', (req, res) => {
+  try {
+    // Verificar se existe arquivo de trending
+    if (fs.existsSync(TRENDING_FILE)) {
+      const dados = JSON.parse(fs.readFileSync(TRENDING_FILE, 'utf-8'));
+      
+      // Verificar se os dados são de hoje
+      const dataHoje = new Date().toISOString().split('T')[0];
+      const dataArquivo = dados.ultimaAtualizacao?.split('T')[0];
+      
+      if (dataArquivo === dataHoje) {
+        console.log('📈 Retornando trending topics do dia');
+        return res.json(dados);
+      }
+    }
+
+    // Fallback: temas padrão se não houver dados do dia
+    console.log('⚠️ Usando trending topics padrão');
+    res.json({
+      trending: [
+        {
+          tema: "Direitos do Consumidor em 2025",
+          descricao: "Novas regras para compras online e proteção contra golpes",
+          area: "Direito do Consumidor",
+          icone: "🛒"
+        },
+        {
+          tema: "Reforma Trabalhista",
+          descricao: "Impactos nas relações de trabalho e contratos",
+          area: "Direito Trabalhista",
+          icone: "💼"
+        },
+        {
+          tema: "LGPD e Proteção de Dados",
+          descricao: "Multas e adequação das empresas à lei",
+          area: "Direito Digital",
+          icone: "🔐"
+        }
+      ],
+      dataAtualizacao: new Date().toISOString(),
+      ultimaAtualizacao: new Date().toISOString(),
+      isFallback: true
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar trending:', error);
+    res.status(500).json({ 
+      error: 'Erro ao buscar trending topics',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA: FORÇAR ATUALIZAÇÃO DE TRENDING (webhook manual)
+// ================================================
+app.post('/api/trending-topics/refresh', async (req, res) => {
+  try {
+    console.log('🔄 Forçando atualização de trending topics...');
+    
+    // Chamar o webhook manual do N8N
+    const N8N_URL = 'localhost:5678/webhook/trending-juridico-manual';
+    
+    const response = await fetch(N8N_URL, { method: 'GET' });
+    
+    if (!response.ok) {
+      throw new Error(`N8N erro: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Trending atualizado via webhook');
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar trending:', error);
+    res.status(500).json({ 
+      error: 'Erro ao atualizar trending topics',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA: ANALISAR LOGO (Proxy para N8N)
+// ================================================
+app.post('/api/analisar-logo', async (req, res) => {
+  try {
+    const { logo } = req.body;
+    if (!logo) {
+      return res.status(400).json({ error: 'Logo obrigatória' });
+    }
+
+    console.log('🖼️ Analisando logo...');
+
+    const N8N_URL = 'http://localhost:5678/webhook/analisar-logo-v2';
+    
+    const response = await fetch(N8N_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logo })
+    });
+
+    if (!response.ok) {
+      throw new Error(`N8N erro: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Logo analisada com sucesso');
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro analisar logo:', error);
+    res.status(500).json({ 
+      error: 'Erro ao analisar logo',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA: GERAR CONTEÚDO
+// ================================================
+app.post('/api/gerar-conteudo', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt obrigatório' });
+    }
+
+    const N8N_URL = 'http://localhost:5678/webhook/juridico-working';
+    
+    const response = await fetch(N8N_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) {
+      throw new Error(`N8N erro: ${response.status}`);
+    }
+
+    const data = await response.json();
+    res.json({ content: data.content || data.texto || '' });
+  } catch (error) {
+    console.error('❌ Erro gerar conteúdo:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar conteúdo',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA: GERAR PROMPT DE IMAGEM (Proxy para N8N Híbrido)
+// ================================================
+app.post('/api/gerar-prompt-imagem', async (req, res) => {
+  try {
+    const { tema, area, estilo, formato, texto, perfil_visual } = req.body;
+
+    console.log('🎨 Gerando prompt via N8N Híbrido...');
+    console.log('📦 Dados recebidos:', { tema, area, estilo, formato, textoLength: texto?.length });
+
+    const N8N_URL = 'http://localhost:5678/webhook/juridico-hibrido';
+    console.log('🔗 Chamando URL:', N8N_URL);
+    
+    const bodyData = { tema, area, estilo, formato, texto, perfil_visual };
+    console.log('📤 Enviando body:', JSON.stringify(bodyData).substring(0, 200) + '...');
+
+    const response = await fetch(N8N_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData)
+    });
+
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('❌ Response body:', errorText);
+      throw new Error(`N8N erro: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Prompt gerado:', data.imageUrl ? 'com imagem' : 'sem imagem');
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro gerar prompt:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar prompt',
+      details: error.message 
+    });
+  }
+});
+
+// ================================================
+// ROTA /api/gerar-imagem - CANVAS MELHORADO FINAL
+// ================================================
+
+app.post('/api/gerar-imagem', async (req, res) => {
+  try {
+    const { 
+      imageUrl, tema, area, nomeAdvogado, oab, email, telefone,
+      formato, estilo, logo, bullet1, bullet2, bullet3
+    } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'URL da imagem obrigatória' });
+    }
+
+    console.log('🎨 Gerando imagem:', { tema, area, formato, estilo });
+    console.log('📝 Bullets:', { bullet1, bullet2, bullet3 });
+
+    // ============================================
+    // PALETAS DE CORES
+    // ============================================
+    const paletas = {
+      classico: { 
+        text: '#FFFFFF', 
+        accent: '#D4AF37',
+        bg: 'rgba(0, 0, 0, 0.65)',
+        shadow: 'rgba(0, 0, 0, 0.9)'
+      },
+      moderno: { 
+        text: '#FFFFFF', 
+        accent: '#FACC15',
+        bg: 'rgba(0, 0, 0, 0.7)',
+        shadow: 'rgba(0, 0, 0, 0.9)'
+      },
+      executivo: { 
+        text: '#FFFFFF', 
+        accent: '#C9A050',
+        bg: 'rgba(20, 20, 20, 0.75)',
+        shadow: 'rgba(0, 0, 0, 0.9)'
+      },
+      acolhedor: { 
+        text: '#FFFFFF', 
+        accent: '#FFB366',
+        bg: 'rgba(40, 25, 15, 0.7)',
+        shadow: 'rgba(0, 0, 0, 0.9)'
+      }
+    };
+    const cores = paletas[estilo] || paletas.classico;
+
+    // ============================================
+    // DIMENSÕES
+    // ============================================
+    const dimensoes = {
+      quadrado: { w: 1080, h: 1080 },
+      stories: { w: 1080, h: 1920 },
+      landscape: { w: 1920, h: 1080 }
+    };
+    const dim = dimensoes[formato] || dimensoes.quadrado;
+
+    // ============================================
+    // CRIAR CANVAS
+    // ============================================
+    const canvas = createCanvas(dim.w, dim.h);
+    const ctx = canvas.getContext('2d');
+
+    // ============================================
+    // CARREGAR IMAGEM BASE
+    // ============================================
+    console.log('📥 Carregando imagem...');
+    const baseImage = await loadImage(imageUrl);
+    ctx.drawImage(baseImage, 0, 0, dim.w, dim.h);
+    
+    // Box cobre quase tudo (95% da altura) para incluir rodapé
+    const boxH = Math.floor(dim.h * 0.95) - 40;
+    
+    // Aplicar blur suave na região do box
+    ctx.save();
+    ctx.filter = 'blur(4px) brightness(0.7)';
+    ctx.drawImage(canvas, 40, 40, dim.w - 80, boxH, 40, 40, dim.w - 80, boxH);
+    ctx.restore();
+
+    // ============================================
+    // BOX DE FUNDO
+    // ============================================
+    ctx.fillStyle = cores.bg;
+    ctx.fillRect(40, 40, dim.w - 80, boxH);
+    
+    // Borda dourada
+    ctx.strokeStyle = cores.accent;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(40, 40, dim.w - 80, boxH);
+
+    // ============================================
+    // FUNÇÕES AUXILIARES
+    // ============================================
+    function fillTextWithShadow(text, x, y, maxWidth = null) {
+      ctx.shadowColor = cores.shadow;
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      
+      if (maxWidth) {
+        ctx.fillText(text, x, y, maxWidth);
+      } else {
+        ctx.fillText(text, x, y);
+      }
+      
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+
+    function wrapText(text, maxWidth) {
+      const words = text.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine + word + ' ';
+        const metrics = ctx.measureText(testLine);
+        
+        if (metrics.width > maxWidth && currentLine !== '') {
+          lines.push(currentLine.trim());
+          currentLine = word + ' ';
+        } else {
+          currentLine = testLine;
+        }
+      }
+      
+      if (currentLine) {
+        lines.push(currentLine.trim());
+      }
+      
+      return lines;
+    }
+
+    // ============================================
+    // ÁREA DE ATUAÇÃO
+    // ============================================
+    if (area?.trim()) {
+      const areaSize = formato === 'stories' ? 34 : (formato === 'landscape' ? 26 : 30);
+      const areaY = formato === 'stories' ? 140 : 120;
+      
+      ctx.fillStyle = cores.accent;
+      ctx.font = `bold ${areaSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      fillTextWithShadow(area.toUpperCase(), dim.w / 2, areaY);
+      
+      // Linha decorativa
+      ctx.shadowColor = 'transparent';
+      const gradiente = ctx.createLinearGradient(dim.w / 2 - 150, 0, dim.w / 2 + 150, 0);
+      gradiente.addColorStop(0, 'transparent');
+      gradiente.addColorStop(0.5, cores.accent);
+      gradiente.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradiente;
+      ctx.fillRect(dim.w / 2 - 150, areaY + 15, 300, 4);
+    }
+
+    // ============================================
+    // TÍTULO
+    // ============================================
+    if (tema?.trim()) {
+      const tituloSize = formato === 'stories' ? 60 : (formato === 'landscape' ? 44 : 52);
+      const tituloY = formato === 'stories' ? 240 : 210;
+      
+      ctx.fillStyle = cores.text;
+      ctx.font = `bold ${tituloSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      
+      const tituloLinhas = wrapText(tema, dim.w - 200);
+      let currentY = tituloY;
+      
+      tituloLinhas.slice(0, 3).forEach(linha => {
+        fillTextWithShadow(linha, dim.w / 2, currentY, dim.w - 200);
+        currentY += tituloSize + 12;
+      });
+    }
+
+    // ============================================
+    // BULLETS
+    // ============================================
+    const bulletSize = formato === 'stories' ? 38 : (formato === 'landscape' ? 30 : 34);
+    ctx.font = `${bulletSize}px Arial, sans-serif`;
+    ctx.fillStyle = cores.text;
+    ctx.textAlign = 'center';
+
+    const bulletsConfig = [
+      { 
+        text: bullet1, 
+        y: formato === 'stories' ? 480 : (formato === 'landscape' ? 420 : 440)
+      },
+      { 
+        text: bullet2, 
+        y: formato === 'stories' ? 600 : (formato === 'landscape' ? 520 : 530)
+      },
+      { 
+        text: bullet3, 
+        y: formato === 'stories' ? 720 : (formato === 'landscape' ? 620 : 620)
+      }
+    ];
+
+    bulletsConfig.forEach(b => {
+      if (b.text?.trim()) {
+        const linhas = wrapText('• ' + b.text, dim.w - 240);
+        linhas.slice(0, 2).forEach((linha, idx) => {
+          fillTextWithShadow(linha, dim.w / 2, b.y + (idx * (bulletSize + 8)));
+        });
+      }
+    });
+
+    // ============================================
+    // LINHA DECORATIVA RODAPÉ
+    // ============================================
+    const rodapeY = formato === 'stories' ? dim.h - 220 : (formato === 'landscape' ? dim.h - 180 : dim.h - 200);
+    
+    const gradRodape = ctx.createLinearGradient(dim.w / 2 - 400, 0, dim.w / 2 + 400, 0);
+    gradRodape.addColorStop(0, 'transparent');
+    gradRodape.addColorStop(0.5, cores.accent);
+    gradRodape.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradRodape;
+    ctx.fillRect(dim.w / 2 - 400, rodapeY, 800, 3);
+
+    // ============================================
+    // NOME DO ADVOGADO
+    // ============================================
+    if (nomeAdvogado?.trim()) {
+      const nomeSize = formato === 'stories' ? 40 : (formato === 'landscape' ? 30 : 36);
+      const nomeY = rodapeY + 50;
+      
+      ctx.fillStyle = cores.accent;
+      ctx.font = `bold ${nomeSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      fillTextWithShadow(nomeAdvogado, dim.w / 2, nomeY);
+    }
+
+    // ============================================
+    // OAB + CONTATO
+    // ============================================
+    if (oab?.trim()) {
+      const contatoParts = [oab];
+      if (email?.trim()) contatoParts.push(email);
+      if (telefone?.trim()) contatoParts.push(telefone);
+      
+      const contatoSize = formato === 'stories' ? 30 : (formato === 'landscape' ? 24 : 26);
+      const contatoY = rodapeY + 90;
+      
+      ctx.fillStyle = cores.text;
+      ctx.font = `${contatoSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      
+      const contatoText = contatoParts.join(' • ').substring(0, 80);
+      fillTextWithShadow(contatoText, dim.w / 2, contatoY);
+    }
+
+    // ============================================
+    // LOGO
+    // ============================================
+    if (logo?.trim()) {
+      try {
+        console.log('🖼️ Adicionando logo...');
+        
+        let logoBase64 = logo.startsWith('data:') ? logo : `data:image/png;base64,${logo}`;
+        const logoImage = await loadImage(logoBase64);
+        
+        const logoSize = formato === 'stories' ? 110 : (formato === 'landscape' ? 80 : 90);
+        const logoX = dim.w - logoSize - 50;
+        const logoY = 50;
+        
+        // Verificar se a logo é PNG (provavelmente tem transparência)
+        const isPNG = logo.includes('image/png') || logo.includes('iVBOR');
+        
+        if (isPNG) {
+          // Logo PNG transparente - desenhar diretamente sem fundo
+          console.log('🎨 Logo PNG detectada - sem fundo branco');
+          
+          // Apenas sombra sutil
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetX = 3;
+          ctx.shadowOffsetY = 3;
+          
+          // Desenhar logo diretamente
+          ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+          
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+        } else {
+          // Logo JPG/outro - adicionar fundo branco circular
+          console.log('🎨 Logo não-PNG - com fundo branco');
+          
+          // Sombra da logo
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+          ctx.shadowBlur = 15;
+          ctx.shadowOffsetX = 4;
+          ctx.shadowOffsetY = 4;
+          
+          // Fundo branco circular
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.beginPath();
+          ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 8, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          
+          // Desenhar logo
+          ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+          
+          // Borda dourada
+          ctx.strokeStyle = cores.accent;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 8, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        console.log('✅ Logo adicionada');
+      } catch (error) {
+        console.error('⚠️ Erro logo:', error.message);
+      }
+    }
+
+    // ============================================
+    // UPLOAD FINAL
+    // ============================================
+    console.log('📤 Upload...');
+    
+    const imageBuffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
+    const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+    
+    const uploadResult = await cloudinary.uploader.upload(base64Image, {
+      folder: 'juridico-final',
+      format: 'jpg'
+    });
+    
+    console.log('✅ Imagem:', uploadResult.secure_url);
+
+    res.json({ success: true, imageUrl: uploadResult.secure_url });
+
+  } catch (error) {
+    console.error('❌ Erro:', error.message);
+    res.status(500).json({ 
+      error: 'Erro ao gerar imagem',
+      details: error.message 
+    });
+  }
+});
+
+
+// ============================================
+// ROTA: REMOVER FUNDO DA LOGO
+// ============================================
+app.post('/api/remover-fundo', async (req, res) => {
+  console.log('🎨 Requisição para remover fundo recebida');
+  
+  try {
+    let { logo } = req.body;
+    
+    if (!logo) {
+      return res.status(400).json({ success: false, error: 'Logo não fornecida' });
+    }
+    
+    // Remover prefixo data:image se existir
+    if (logo.includes(',')) {
+      logo = logo.split(',')[1];
+    }
+    
+    console.log('📦 Tamanho do base64:', logo.length, 'chars');
+    
+    const API_KEY = process.env.REMOVEBG_API_KEY || 'cz67CSF3ZrSWHxhXuvWzVgTz';
+    
+    // Chamar API do remove.bg
+    const https = require('https');
+    const querystring = require('querystring');
+    
+    const postData = querystring.stringify({
+      image_file_b64: logo,
+      size: 'auto',
+      format: 'png'
+    });
+    
+    const options = {
+      hostname: 'api.remove.bg',
+      path: '/v1.0/removebg',
+      method: 'POST',
+      headers: {
+        'X-Api-Key': API_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+    
+    const apiRequest = https.request(options, (apiResponse) => {
+      const chunks = [];
+      
+      apiResponse.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      
+      apiResponse.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        
+        if (apiResponse.statusCode === 200) {
+          const resultBase64 = buffer.toString('base64');
+          console.log('✅ Fundo removido com sucesso! Tamanho:', resultBase64.length);
+          
+          res.json({
+            success: true,
+            logoSemFundo: resultBase64,
+            mimeType: 'image/png'
+          });
+        } else {
+          console.log('❌ Erro na API:', apiResponse.statusCode);
+          let errorMsg = 'Erro na API do remove.bg';
+          try {
+            const errorData = JSON.parse(buffer.toString());
+            errorMsg = errorData.errors?.[0]?.title || errorMsg;
+          } catch (e) {}
+          
+          res.status(apiResponse.statusCode).json({
+            success: false,
+            error: errorMsg
+          });
+        }
+      });
+    });
+    
+    apiRequest.on('error', (error) => {
+      console.log('❌ Erro na requisição:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    });
+    
+    apiRequest.write(postData);
+    apiRequest.end();
+    
+  } catch (error) {
+    console.error('❌ Erro ao remover fundo:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// INICIAR SERVIDOR
+// ============================================
+// ============================================
+// PROXY PARA N8N LOCAL
+// ============================================
+const http = require("http");
+
+app.all("/api/n8n/*", (req, res) => {
+  const n8nPath = req.path.replace("/api/n8n", "");
+  console.log("🔄 Proxy n8n:", req.method, n8nPath);
+  
+  const options = {
+    hostname: "localhost",
+    port: 5678,
+    path: n8nPath,
+    method: req.method,
+    headers: { "Content-Type": "application/json" }
+  };
+  
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.status(proxyRes.statusCode);
+    proxyRes.pipe(res);
+  });
+  
+  proxyReq.on("error", (err) => {
+    console.error("❌ Erro proxy n8n:", err.message);
+    res.status(500).json({ error: "Erro ao conectar com n8n" });
+  });
+  
+  if (["POST", "PUT", "PATCH"].includes(req.method) && req.body) {
+    proxyReq.write(JSON.stringify(req.body));
+  }
+  
+  proxyReq.end();
+});
+
+app.listen(PORT, () => {
+  console.log('=================================');
+  console.log('🚀 Backend v8 - Trending Topics');
+  console.log('=================================');
+  console.log('✅ Porta:', PORT);
+  console.log('📈 Trending Topics: ATIVO');
+  console.log('🎨 Método: 2 etapas (base + logo)');
+  console.log('=================================');
+});
