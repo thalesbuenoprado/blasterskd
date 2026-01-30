@@ -4,7 +4,7 @@
 // Até a linha "// ==== MANTER DAQUI PRA BAIXO ===="
 // =====================================================
 
-import { Share2, Link2 } from 'lucide-react';
+import { Share2, Link2, MoreVertical } from 'lucide-react';
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { Scale, Loader2, Eye, EyeOff, LogOut, Copy, Check, Image as ImageIcon, Download, X, Lightbulb, Users, Settings, Upload, Palette, TrendingUp, Flame, RefreshCw, Sparkles, Instagram, Facebook, Linkedin, Twitter, FileText, MessageCircle, Edit3, ZoomIn, Mail, Lock, User, Award, AlertCircle, CheckCircle, Camera, Save, Phone, Trash2, ExternalLink, Calendar, Tag, FolderOpen, ChevronUp, Clock } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
@@ -367,15 +367,15 @@ function AuthProvider({ children }) {
   async function carregarAgendamentos(userId) {
     try {
       console.log('📅 Carregando agendamentos...');
-      
+
       const { data, error } = await supabase
         .from('agendamentos')
         .select('*')
         .eq('user_id', userId)
         .order('data_agendada', { ascending: true });
-      
+
       if (error) throw error;
-      
+
       console.log('✅ Agendamentos carregados:', data?.length || 0);
       setMeusAgendamentos(data || []);
     } catch (error) {
@@ -385,9 +385,9 @@ function AuthProvider({ children }) {
 
   async function criarAgendamento(dados) {
     if (!user) throw new Error('Usuário não autenticado');
-    
+
     console.log('📅 Criando agendamento:', dados);
-    
+
     const { data, error } = await supabase
       .from('agendamentos')
       .insert({
@@ -403,9 +403,9 @@ function AuthProvider({ children }) {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     console.log('✅ Agendamento criado:', data);
     await carregarAgendamentos(user.id);
     return data;
@@ -413,29 +413,29 @@ function AuthProvider({ children }) {
 
   async function cancelarAgendamento(agendamentoId) {
     if (!user) throw new Error('Usuário não autenticado');
-    
+
     const { error } = await supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
       .eq('id', agendamentoId)
       .eq('user_id', user.id);
-    
+
     if (error) throw error;
-    
+
     await carregarAgendamentos(user.id);
   }
 
   async function deletarAgendamento(agendamentoId) {
     if (!user) throw new Error('Usuário não autenticado');
-    
+
     const { error } = await supabase
       .from('agendamentos')
       .delete()
       .eq('id', agendamentoId)
       .eq('user_id', user.id);
-    
+
     if (error) throw error;
-    
+
     await carregarAgendamentos(user.id);
   }
 
@@ -497,43 +497,43 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState(false);
-  
+
   const [dataAgendada, setDataAgendada] = useState('');
   const [horaAgendada, setHoraAgendada] = useState('');
   const [redeSocial, setRedeSocial] = useState('instagram');
-  
+
   const agora = new Date();
   const minDate = agora.toISOString().split('T')[0];
-  
+
   useEffect(() => {
     if (isOpen) {
       setErro('');
       setSucesso(false);
       setDataAgendada('');
       setHoraAgendada('');
-      
+
       const sugestao = new Date(agora.getTime() + 2 * 60 * 60 * 1000);
       setDataAgendada(sugestao.toISOString().split('T')[0]);
       setHoraAgendada(sugestao.toTimeString().slice(0, 5));
     }
   }, [isOpen]);
-  
+
   const handleAgendar = async () => {
     if (!dataAgendada || !horaAgendada) {
       setErro('Selecione data e hora');
       return;
     }
-    
+
     const dataHora = new Date(`${dataAgendada}T${horaAgendada}:00`);
-    
+
     if (dataHora <= new Date()) {
       setErro('A data/hora deve ser no futuro');
       return;
     }
-    
+
     setLoading(true);
     setErro('');
-    
+
     try {
       await criarAgendamento({
         titulo: titulo || 'Post Jurídico',
@@ -542,7 +542,7 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
         redeSocial: redeSocial,
         dataAgendada: dataHora.toISOString()
       });
-      
+
       setSucesso(true);
       setTimeout(() => {
         onClose();
@@ -554,9 +554,9 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
       setLoading(false);
     }
   };
-  
+
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6 relative">
@@ -571,7 +571,7 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         {sucesso ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
@@ -594,7 +594,7 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
                 </div>
               )}
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Rede Social
@@ -608,11 +608,10 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
                   <button
                     key={rede.id}
                     onClick={() => setRedeSocial(rede.id)}
-                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                      redeSocial === rede.id
-                        ? 'bg-amber-500 text-slate-900'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
+                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${redeSocial === rede.id
+                      ? 'bg-amber-500 text-slate-900'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
                   >
                     <rede.icon className="w-4 h-4" />
                     <span className="text-sm">{rede.label}</span>
@@ -620,7 +619,7 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
                 ))}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -646,20 +645,20 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
                 />
               </div>
             </div>
-            
+
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-6">
               <p className="text-sm text-blue-300">
-                <strong>Como funciona:</strong> No horário agendado, você receberá um email 
+                <strong>Como funciona:</strong> No horário agendado, você receberá um email
                 com o conteúdo e a imagem prontos para copiar e colar na rede social escolhida.
               </p>
             </div>
-            
+
             {erro && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
                 <p className="text-sm text-red-400">{erro}</p>
               </div>
             )}
-            
+
             <div className="flex gap-3">
               <button
                 onClick={onClose}
@@ -695,13 +694,13 @@ function ModalAgendar({ isOpen, onClose, conteudo, imagemUrl, titulo }) {
 function ModalMeusAgendamentos({ isOpen, onClose }) {
   const { meusAgendamentos, cancelarAgendamento, deletarAgendamento, recarregarAgendamentos } = useAuth();
   const [loading, setLoading] = useState(null);
-  
+
   useEffect(() => {
     if (isOpen) {
       recarregarAgendamentos();
     }
   }, [isOpen]);
-  
+
   const formatarData = (dataISO) => {
     const data = new Date(dataISO);
     return data.toLocaleDateString('pt-BR', {
@@ -712,7 +711,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
       minute: '2-digit'
     });
   };
-  
+
   const getStatusConfig = (status) => {
     switch (status) {
       case 'pendente':
@@ -727,7 +726,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
         return { cor: 'bg-slate-500/20 text-slate-400', label: status, icon: Clock };
     }
   };
-  
+
   const getRedeIcon = (rede) => {
     switch (rede) {
       case 'instagram': return Instagram;
@@ -736,7 +735,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
       default: return Instagram;
     }
   };
-  
+
   const handleCancelar = async (id) => {
     if (!confirm('Cancelar este agendamento?')) return;
     setLoading(id);
@@ -746,7 +745,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
       setLoading(null);
     }
   };
-  
+
   const handleDeletar = async (id) => {
     if (!confirm('Excluir permanentemente este agendamento?')) return;
     setLoading(id);
@@ -756,12 +755,12 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
       setLoading(null);
     }
   };
-  
+
   if (!isOpen) return null;
-  
+
   const agendamentosPendentes = meusAgendamentos?.filter(a => a.status === 'pendente') || [];
   const agendamentosAntigos = meusAgendamentos?.filter(a => a.status !== 'pendente') || [];
-  
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
@@ -779,7 +778,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           {!meusAgendamentos?.length ? (
             <div className="text-center py-12">
@@ -799,7 +798,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
                       const statusConfig = getStatusConfig(ag.status);
                       const RedeIcon = getRedeIcon(ag.rede_social);
                       const StatusIcon = statusConfig.icon;
-                      
+
                       return (
                         <div key={ag.id} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600/50">
                           <div className="flex items-start justify-between gap-4">
@@ -835,7 +834,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
                   </div>
                 </div>
               )}
-              
+
               {agendamentosAntigos.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -846,7 +845,7 @@ function ModalMeusAgendamentos({ isOpen, onClose }) {
                       const statusConfig = getStatusConfig(ag.status);
                       const RedeIcon = getRedeIcon(ag.rede_social);
                       const StatusIcon = statusConfig.icon;
-                      
+
                       return (
                         <div key={ag.id} className="bg-slate-700/30 rounded-lg p-3 flex items-center justify-between">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1640,72 +1639,72 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
     return (
       <div className="flex justify-center items-center w-full">
         <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative border border-slate-800">
-        {/* Camada 1: Fundo (Imagem ou Gradiente) */}
-        <div className="absolute inset-0 z-0">
-          {imagemPreview ? (
-            <img
-              src={imagemPreview}
-              alt="Stories"
-              className="w-full h-full object-cover"
-              onLoad={() => console.log('✅ [IMG] Stories carregado!')}
-            />
-          ) : (
-            <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
-              {loadingImagem ? (
-                <div className="space-y-4 animate-pulse">
-                  <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
-                    <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+          {/* Camada 1: Fundo (Imagem ou Gradiente) */}
+          <div className="absolute inset-0 z-0">
+            {imagemPreview ? (
+              <img
+                src={imagemPreview}
+                alt="Stories"
+                className="w-full h-full object-cover"
+                onLoad={() => console.log('✅ [IMG] Stories carregado!')}
+              />
+            ) : (
+              <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+                {loadingImagem ? (
+                  <div className="space-y-4 animate-pulse">
+                    <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
+                      <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-amber-500 font-bold text-lg">Criando sua arte profissional...</p>
+                      <p className="text-slate-400 text-sm italic">Isso leva cerca de 5 segundos</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-amber-500 font-bold text-lg">Criando sua arte profissional...</p>
-                    <p className="text-slate-400 text-sm italic">Isso leva cerca de 5 segundos</p>
+                ) : (
+                  <div className="space-y-2 opacity-30">
+                    <Instagram className="w-12 h-12 mx-auto text-white" />
+                    <p className="text-white text-sm">Aguardando geração...</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Camada 2: Header Instagram (Só aparece quando NÃO há imagem gerada) */}
+          {!imagemPreview && (
+            <div className="absolute top-0 left-0 right-0 p-4 z-20 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/40 to-transparent">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600 p-[2px]">
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-slate-700">{usuario?.nome?.[0] || 'A'}</span>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-2 opacity-30">
-                  <Instagram className="w-12 h-12 mx-auto text-white" />
-                  <p className="text-white text-sm">Aguardando geração...</p>
+                <div className="flex flex-col">
+                  <span className="text-white text-[11px] font-bold leading-none">{usuario?.usuario || 'advogado'}</span>
+                  <span className="text-white/70 text-[9px]">2h</span>
                 </div>
-              )}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Camada 2: Header Instagram (Só aparece quando NÃO há imagem gerada) */}
-        {!imagemPreview && (
-          <div className="absolute top-0 left-0 right-0 p-4 z-20 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/40 to-transparent">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600 p-[2px]">
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-slate-700">{usuario?.nome?.[0] || 'A'}</span>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-white text-[11px] font-bold leading-none">{usuario?.usuario || 'advogado'}</span>
-                <span className="text-white/70 text-[9px]">2h</span>
+          {/* Camada 3: Overlays de Interação (Sempre ocultos, pois é só um preview) */}
+          <div className="absolute bottom-6 left-0 right-0 p-4 z-20 flex flex-col items-center pointer-events-none">
+            <div className="flex flex-col items-center opacity-70">
+              <ChevronUp className="w-4 h-4 text-white animate-bounce mb-[-4px]" />
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full text-white text-[10px] font-bold uppercase tracking-wider">
+                Ver mais
               </div>
             </div>
           </div>
-        )}
 
-        {/* Camada 3: Overlays de Interação (Sempre ocultos, pois é só um preview) */}
-        <div className="absolute bottom-6 left-0 right-0 p-4 z-20 flex flex-col items-center pointer-events-none">
-          <div className="flex flex-col items-center opacity-70">
-            <ChevronUp className="w-4 h-4 text-white animate-bounce mb-[-4px]" />
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full text-white text-[10px] font-bold uppercase tracking-wider">
-              Ver mais
+          {/* Badge superior lateral (Só aparece quando NÃO há imagem gerada) */}
+          {!imagemPreview && (
+            <div className="absolute top-12 right-4 z-20 pointer-events-none">
+              <span className="bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white/80 font-medium">
+                {formato === 'reels' ? 'Reels' : 'Story'}
+              </span>
             </div>
-          </div>
-        </div>
-
-        {/* Badge superior lateral (Só aparece quando NÃO há imagem gerada) */}
-        {!imagemPreview && (
-          <div className="absolute top-12 right-4 z-20 pointer-events-none">
-            <span className="bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white/80 font-medium">
-              {formato === 'reels' ? 'Reels' : 'Story'}
-            </span>
-          </div>
-        )}
+          )}
         </div>
       </div>
     );
@@ -1715,120 +1714,120 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
   const PreviewInstagram = () => (
     <div className="flex justify-center items-start w-full">
       <div className="bg-white rounded-xl overflow-hidden w-full max-w-[360px] shadow-2xl">
-      {/* Header do Post */}
-      <div className="flex items-center gap-3 p-3 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-pink-500 to-purple-600 p-0.5">
-          <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-            <span className="text-xs font-bold text-gray-700">
-              {usuario?.nome?.[0] || 'A'}
-            </span>
+        {/* Header do Post */}
+        <div className="flex items-center gap-3 p-3 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-pink-500 to-purple-600 p-0.5">
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+              <span className="text-xs font-bold text-gray-700">
+                {usuario?.nome?.[0] || 'A'}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-900">{usuario?.nome?.toLowerCase().replace(/\s+/g, '') || 'advogado'}</p>
-          <p className="text-xs text-gray-500">Patrocinado</p>
-        </div>
-        <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="6" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="18" r="1.5" />
-        </svg>
-      </div>
-
-      {/* Imagem */}
-      <div className="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden relative group">
-        {imagemPreview ? (
-          <>
-            <img
-              src={imagemPreview}
-              alt="Imagem do post"
-              className="w-full h-full object-cover"
-            />
-            {onVisualizarImagem && (
-              <button
-                onClick={onVisualizarImagem}
-                className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-              >
-                <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                  <ZoomIn className="w-6 h-6 text-gray-700" />
-                </div>
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="text-center p-6">
-            <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Sua imagem aqui</p>
-            <p className="text-xs text-slate-400 mt-1">Clique em "Imagem"</p>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">{usuario?.nome?.toLowerCase().replace(/\s+/g, '') || 'advogado'}</p>
+            <p className="text-xs text-gray-500">Patrocinado</p>
           </div>
-        )}
-      </div>
-
-      {/* Ações */}
-      <div className="p-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-          </div>
-          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="6" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="18" r="1.5" />
           </svg>
         </div>
 
-        <p className="text-sm font-semibold text-gray-900 mb-1">1.234 curtidas</p>
-
-        {/* Texto do Post - Mostra apenas 125 caracteres (limite real do Instagram) */}
-        <div className="text-sm text-gray-900">
-          <span className="font-semibold">{usuario?.nome?.toLowerCase().replace(/\s+/g, '') || 'advogado'} </span>
-          {expandido ? (
+        {/* Imagem */}
+        <div className="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden relative group">
+          {imagemPreview ? (
             <>
-              <span className="whitespace-pre-line">{texto}</span>
-              {hashtags && <span className="text-blue-900 block mt-2">{hashtags}</span>}
-              <button
-                onClick={() => setExpandido(false)}
-                className="text-gray-400 block mt-1"
-              >
-                ...menos
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="whitespace-pre-line">{gancho}</span>
-              {temMais && (
-                <span
-                  className="text-gray-400 ml-1 cursor-pointer hover:text-gray-600"
-                  onClick={() => setExpandido(true)}
+              <img
+                src={imagemPreview}
+                alt="Imagem do post"
+                className="w-full h-full object-cover"
+              />
+              {onVisualizarImagem && (
+                <button
+                  onClick={onVisualizarImagem}
+                  className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                 >
-                  ... <span className="underline">mais</span>
-                </span>
+                  <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                    <ZoomIn className="w-6 h-6 text-gray-700" />
+                  </div>
+                </button>
               )}
             </>
+          ) : (
+            <div className="text-center p-6">
+              <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">Sua imagem aqui</p>
+              <p className="text-xs text-slate-400 mt-1">Clique em "Imagem"</p>
+            </div>
           )}
         </div>
 
-        {/* Indicador de caracteres do gancho */}
-        {!expandido && (
-          <div className={`mt-2 text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 ${gancho.length <= 125 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-            <span className="font-medium">Gancho:</span> {gancho.length}/125 caracteres
-            {gancho.length <= 125 ? ' ✓' : ' (ideal: até 125)'}
+        {/* Ações */}
+        <div className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </div>
+            <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
           </div>
-        )}
 
-        {/* Hashtags quando não expandido */}
-        {!expandido && hashtags && (
-          <p className="text-sm text-blue-900 mt-2 line-clamp-1">{hashtags}</p>
-        )}
+          <p className="text-sm font-semibold text-gray-900 mb-1">1.234 curtidas</p>
 
-        <p className="text-xs text-gray-400 mt-2 uppercase">Há 2 horas</p>
-      </div>
+          {/* Texto do Post - Mostra apenas 125 caracteres (limite real do Instagram) */}
+          <div className="text-sm text-gray-900">
+            <span className="font-semibold">{usuario?.nome?.toLowerCase().replace(/\s+/g, '') || 'advogado'} </span>
+            {expandido ? (
+              <>
+                <span className="whitespace-pre-line">{texto}</span>
+                {hashtags && <span className="text-blue-900 block mt-2">{hashtags}</span>}
+                <button
+                  onClick={() => setExpandido(false)}
+                  className="text-gray-400 block mt-1"
+                >
+                  ...menos
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="whitespace-pre-line">{gancho}</span>
+                {temMais && (
+                  <span
+                    className="text-gray-400 ml-1 cursor-pointer hover:text-gray-600"
+                    onClick={() => setExpandido(true)}
+                  >
+                    ... <span className="underline">mais</span>
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Indicador de caracteres do gancho */}
+          {!expandido && (
+            <div className={`mt-2 text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 ${gancho.length <= 125 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className="font-medium">Gancho:</span> {gancho.length}/125 caracteres
+              {gancho.length <= 125 ? ' ✓' : ' (ideal: até 125)'}
+            </div>
+          )}
+
+          {/* Hashtags quando não expandido */}
+          {!expandido && hashtags && (
+            <p className="text-sm text-blue-900 mt-2 line-clamp-1">{hashtags}</p>
+          )}
+
+          <p className="text-xs text-gray-400 mt-2 uppercase">Há 2 horas</p>
+        </div>
       </div>
     </div>
   );
@@ -1837,105 +1836,105 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
   const PreviewFacebook = () => (
     <div className="flex justify-center items-start w-full">
       <div className="bg-white rounded-xl overflow-hidden w-full max-w-[400px] shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-3">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-          <span className="text-sm font-bold text-white">
-            {usuario?.nome?.[0] || 'A'}
-          </span>
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-900">{usuario?.nome || 'Advogado'}</p>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <span>2 h</span>
-            <span>·</span>
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-            </svg>
+        {/* Header */}
+        <div className="flex items-center gap-3 p-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+            <span className="text-sm font-bold text-white">
+              {usuario?.nome?.[0] || 'A'}
+            </span>
           </div>
-        </div>
-        <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="6" r="2" />
-          <circle cx="12" cy="12" r="2" />
-          <circle cx="12" cy="18" r="2" />
-        </svg>
-      </div>
-
-      {/* Texto do Post */}
-      <div className="px-3 pb-3">
-        <p className="text-sm text-gray-900 whitespace-pre-line">{texto}</p>
-        {hashtags && (
-          <p className="text-sm text-blue-600 mt-2">{hashtags}</p>
-        )}
-      </div>
-
-      {/* Imagem */}
-      <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden relative group">
-        {imagemPreview ? (
-          <>
-            <img
-              src={imagemPreview}
-              alt="Imagem do post"
-              className="w-full h-full object-cover"
-            />
-            {onVisualizarImagem && (
-              <button
-                onClick={onVisualizarImagem}
-                className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-              >
-                <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                  <ZoomIn className="w-6 h-6 text-gray-700" />
-                </div>
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="text-center p-6">
-            <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Sua imagem aqui</p>
-          </div>
-        )}
-      </div>
-
-      {/* Reações */}
-      <div className="p-3 border-t border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1">
-            <div className="flex -space-x-1">
-              <span className="text-sm">👍</span>
-              <span className="text-sm">❤️</span>
-              <span className="text-sm">😮</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">{usuario?.nome || 'Advogado'}</p>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <span>2 h</span>
+              <span>·</span>
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+              </svg>
             </div>
-            <span className="text-sm text-gray-500 ml-1">256</span>
           </div>
-          <div className="text-sm text-gray-500">
-            <span>42 comentários</span>
-            <span className="mx-1">·</span>
-            <span>18 compartilhamentos</span>
-          </div>
+          <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="6" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="18" r="2" />
+          </svg>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
-          <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-            </svg>
-            <span className="text-sm font-medium">Curtir</span>
-          </button>
-          <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span className="text-sm font-medium">Comentar</span>
-          </button>
-          <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            <span className="text-sm font-medium">Enviar</span>
-          </button>
+        {/* Texto do Post */}
+        <div className="px-3 pb-3">
+          <p className="text-sm text-gray-900 whitespace-pre-line">{texto}</p>
+          {hashtags && (
+            <p className="text-sm text-blue-600 mt-2">{hashtags}</p>
+          )}
         </div>
-      </div>
+
+        {/* Imagem */}
+        <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden relative group">
+          {imagemPreview ? (
+            <>
+              <img
+                src={imagemPreview}
+                alt="Imagem do post"
+                className="w-full h-full object-cover"
+              />
+              {onVisualizarImagem && (
+                <button
+                  onClick={onVisualizarImagem}
+                  className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                >
+                  <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                    <ZoomIn className="w-6 h-6 text-gray-700" />
+                  </div>
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="text-center p-6">
+              <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">Sua imagem aqui</p>
+            </div>
+          )}
+        </div>
+
+        {/* Reações */}
+        <div className="p-3 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1">
+              <div className="flex -space-x-1">
+                <span className="text-sm">👍</span>
+                <span className="text-sm">❤️</span>
+                <span className="text-sm">😮</span>
+              </div>
+              <span className="text-sm text-gray-500 ml-1">256</span>
+            </div>
+            <div className="text-sm text-gray-500">
+              <span>42 comentários</span>
+              <span className="mx-1">·</span>
+              <span>18 compartilhamentos</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
+            <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+              <span className="text-sm font-medium">Curtir</span>
+            </button>
+            <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="text-sm font-medium">Comentar</span>
+            </button>
+            <button className="flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span className="text-sm font-medium">Enviar</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1957,114 +1956,114 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
     return (
       <div className="flex justify-center items-center w-full">
         <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative">
-        {/* Área do vídeo */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-800 via-slate-900 to-black flex items-center justify-center group">
-          {imagemPreview ? (
-            <>
-              <img
-                src={imagemPreview}
-                alt="Thumbnail do vídeo"
-                className="w-full h-full object-cover"
-              />
-              {onVisualizarImagem && (
-                <button
-                  onClick={onVisualizarImagem}
-                  className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
-                >
-                  <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                    <ZoomIn className="w-6 h-6 text-gray-700" />
-                  </div>
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
+          {/* Área do vídeo */}
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-800 via-slate-900 to-black flex items-center justify-center group">
+            {imagemPreview ? (
+              <>
+                <img
+                  src={imagemPreview}
+                  alt="Thumbnail do vídeo"
+                  className="w-full h-full object-cover"
+                />
+                {onVisualizarImagem && (
+                  <button
+                    onClick={onVisualizarImagem}
+                    className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                  >
+                    <div className="bg-white/90 rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                      <ZoomIn className="w-6 h-6 text-gray-700" />
+                    </div>
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <p className="text-white/60 text-xs">Seu vídeo aqui</p>
+              </div>
+            )}
+          </div>
+
+          {/* Overlay gradient - Somente se não houver imagem real ou se quiser escurecer o fundo, mas a imagem do Puppeteer já é completa */}
+          {!imagemPreview && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />}
+
+          {/* Ícones laterais */}
+          <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
+            {/* Perfil */}
+            <div className="relative">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center border-2 border-white">
+                <span className="text-sm font-bold text-white">{usuario?.nome?.[0] || 'A'}</span>
+              </div>
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">+</span>
+              </div>
+            </div>
+
+            {/* Curtir */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
               </div>
-              <p className="text-white/60 text-xs">Seu vídeo aqui</p>
+              <span className="text-white text-xs font-medium">45.2K</span>
+            </div>
+
+            {/* Comentários */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 flex items-center justify-center">
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z" />
+                </svg>
+              </div>
+              <span className="text-white text-xs font-medium">892</span>
+            </div>
+
+            {/* Salvar */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 flex items-center justify-center">
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+                </svg>
+              </div>
+              <span className="text-white text-xs font-medium">12.3K</span>
+            </div>
+
+            {/* Compartilhar */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 flex items-center justify-center">
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" />
+                </svg>
+              </div>
+              <span className="text-white text-xs font-medium">3.1K</span>
+            </div>
+
+            {/* Disco de música */}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-700 flex items-center justify-center animate-spin" style={{ animationDuration: '3s' }}>
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-400 to-amber-600" />
+            </div>
+          </div>
+
+          {/* Informações do post - Ocultar se já houver imagem real, pois a imagem do Puppeteer já contém o texto */}
+          {!imagemPreview && (
+            <div className="absolute bottom-4 left-3 right-16">
+              <p className="text-white font-semibold text-sm mb-1">@{usuario?.nome?.toLowerCase().replace(/\s+/g, '_') || 'advogado'}</p>
+              <p className="text-white text-xs leading-relaxed line-clamp-3">{legenda}</p>
+
+              {/* Música */}
+              <div className="flex items-center gap-2 mt-2">
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                </svg>
+                <p className="text-white text-xs">Som original - {usuario?.nome || 'Advogado'}</p>
+              </div>
             </div>
           )}
-        </div>
-
-        {/* Overlay gradient - Somente se não houver imagem real ou se quiser escurecer o fundo, mas a imagem do Puppeteer já é completa */}
-        {!imagemPreview && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />}
-
-        {/* Ícones laterais */}
-        <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
-          {/* Perfil */}
-          <div className="relative">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center border-2 border-white">
-              <span className="text-sm font-bold text-white">{usuario?.nome?.[0] || 'A'}</span>
-            </div>
-            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">+</span>
-            </div>
-          </div>
-
-          {/* Curtir */}
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-              </svg>
-            </div>
-            <span className="text-white text-xs font-medium">45.2K</span>
-          </div>
-
-          {/* Comentários */}
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z" />
-              </svg>
-            </div>
-            <span className="text-white text-xs font-medium">892</span>
-          </div>
-
-          {/* Salvar */}
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-              </svg>
-            </div>
-            <span className="text-white text-xs font-medium">12.3K</span>
-          </div>
-
-          {/* Compartilhar */}
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" />
-              </svg>
-            </div>
-            <span className="text-white text-xs font-medium">3.1K</span>
-          </div>
-
-          {/* Disco de música */}
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-700 flex items-center justify-center animate-spin" style={{ animationDuration: '3s' }}>
-            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-400 to-amber-600" />
-          </div>
-        </div>
-
-        {/* Informações do post - Ocultar se já houver imagem real, pois a imagem do Puppeteer já contém o texto */}
-        {!imagemPreview && (
-          <div className="absolute bottom-4 left-3 right-16">
-            <p className="text-white font-semibold text-sm mb-1">@{usuario?.nome?.toLowerCase().replace(/\s+/g, '_') || 'advogado'}</p>
-            <p className="text-white text-xs leading-relaxed line-clamp-3">{legenda}</p>
-
-            {/* Música */}
-            <div className="flex items-center gap-2 mt-2">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-              </svg>
-              <p className="text-white text-xs">Som original - {usuario?.nome || 'Advogado'}</p>
-            </div>
-          </div>
-        )}
         </div>
       </div>
     );
@@ -2094,76 +2093,76 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
   const PreviewFacebookStories = () => (
     <div className="flex justify-center items-center w-full">
       <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative">
-      {/* Imagem de fundo fullscreen */}
-      <div className="absolute inset-0">
-        {imagemPreview ? (
-          <>
-            <img
-              src={imagemPreview}
-              alt="Stories"
-              className="w-full h-full object-cover"
-            />
-            {onVisualizarImagem && (
-              <button
-                onClick={onVisualizarImagem}
-                className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all cursor-pointer z-10"
-              >
-                <div className="bg-white/90 rounded-full p-3 shadow-lg">
-                  <ZoomIn className="w-6 h-6 text-gray-700" />
+        {/* Imagem de fundo fullscreen */}
+        <div className="absolute inset-0">
+          {imagemPreview ? (
+            <>
+              <img
+                src={imagemPreview}
+                alt="Stories"
+                className="w-full h-full object-cover"
+              />
+              {onVisualizarImagem && (
+                <button
+                  onClick={onVisualizarImagem}
+                  className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all cursor-pointer z-10"
+                >
+                  <div className="bg-white/90 rounded-full p-3 shadow-lg">
+                    <ZoomIn className="w-6 h-6 text-gray-700" />
+                  </div>
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+              {loadingImagem ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-blue-500 font-bold text-lg">Criando sua arte profissional...</p>
+                    <p className="text-slate-400 text-sm italic">Isso leva cerca de 5 segundos</p>
+                  </div>
                 </div>
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
-            {loadingImagem ? (
-              <div className="space-y-4 animate-pulse">
-                <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto">
-                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              ) : (
+                <div className="space-y-2 opacity-30">
+                  <ImageIcon className="w-12 h-12 mx-auto text-white/50" />
+                  <p className="text-white/50 text-sm">Aguardando geração...</p>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-blue-500 font-bold text-lg">Criando sua arte profissional...</p>
-                  <p className="text-slate-400 text-sm italic">Isso leva cerca de 5 segundos</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2 opacity-30">
-                <ImageIcon className="w-12 h-12 mx-auto text-white/50" />
-                <p className="text-white/50 text-sm">Aguardando geração...</p>
-              </div>
-            )}
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Header Stories */}
+        <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/50 to-transparent z-20">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center border-2 border-blue-400">
+              <span className="text-sm font-bold text-white">{usuario?.nome?.[0] || 'A'}</span>
+            </div>
+            <div>
+              <span className="text-white text-sm font-medium block">{usuario?.nome || 'Advogado'}</span>
+              <span className="text-white/60 text-xs">2h atrás</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Texto na parte inferior - Ocultar se já houver imagem real */}
+        {!imagemPreview && (
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20">
+            <p className="text-white text-sm leading-relaxed line-clamp-4">
+              {gancho}{temMais && '...'}
+            </p>
           </div>
         )}
-      </div>
 
-      {/* Header Stories */}
-      <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/50 to-transparent z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center border-2 border-blue-400">
-            <span className="text-sm font-bold text-white">{usuario?.nome?.[0] || 'A'}</span>
-          </div>
-          <div>
-            <span className="text-white text-sm font-medium block">{usuario?.nome || 'Advogado'}</span>
-            <span className="text-white/60 text-xs">2h atrás</span>
-          </div>
+        {/* Indicador Stories */}
+        <div className="absolute top-14 left-0 right-0 flex justify-center z-20">
+          <span className="bg-blue-500/80 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs font-medium">
+            📱 Stories
+          </span>
         </div>
-      </div>
-
-      {/* Texto na parte inferior - Ocultar se já houver imagem real */}
-      {!imagemPreview && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20">
-          <p className="text-white text-sm leading-relaxed line-clamp-4">
-            {gancho}{temMais && '...'}
-          </p>
-        </div>
-      )}
-
-      {/* Indicador Stories */}
-      <div className="absolute top-14 left-0 right-0 flex justify-center z-20">
-        <span className="bg-blue-500/80 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs font-medium">
-          📱 Stories
-        </span>
-      </div>
       </div>
     </div>
   );
@@ -2736,11 +2735,10 @@ function AnaliseLogoComponent() {
                 <button
                   key={paleta.id}
                   onClick={() => selecionarPaleta(paleta)}
-                  className={`p-3 rounded-lg border transition-all text-left ${
-                    perfilVisual?.id === paleta.id
-                      ? 'border-amber-400 bg-amber-400/10'
-                      : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-                  }`}
+                  className={`p-3 rounded-lg border transition-all text-left ${perfilVisual?.id === paleta.id
+                    ? 'border-amber-400 bg-amber-400/10'
+                    : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
+                    }`}
                 >
                   <div className="flex gap-1 mb-2">
                     {paleta.cores_principais.map((cor, idx) => (
@@ -3141,6 +3139,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   const [loading, setLoading] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [modoEdicao, setModoEdicao] = useState(false);
+  const [mostrarMenuAcoes, setMostrarMenuAcoes] = useState(false);
   const [imagemPreview, setImagemPreview] = useState(null);
   const imagemPreviewRef = useRef(null); // Ref para persistir a URL da imagem
   const [mostrarImagemFull, setMostrarImagemFull] = useState(false);
@@ -3227,7 +3226,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   const [logoUser, setLogoUser] = useState(user.logo || null);
   const [mostrarMaisTipos, setMostrarMaisTipos] = useState(false);
   const [camposComErro, setCamposComErro] = useState([]);
-  
+
   // Estados para agendamento
   const [mostrarModalAgendar, setMostrarModalAgendar] = useState(false);
   const [mostrarMeusAgendamentos, setMostrarMeusAgendamentos] = useState(false);
@@ -3255,7 +3254,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   // =====================================================
   const limparConteudo = (texto) => {
     if (!texto) return '';
-    
+
     let limpo = texto
       // Remove marcações de estrutura comuns
       .replace(/\[GANCHO\]|\[HISTÓRIA\]|\[CTA\]|\[HASHTAGS\]/gi, '')
@@ -3282,7 +3281,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^\s*\n+/, '')
       .trim();
-    
+
     return limpo;
   };
 
@@ -3292,47 +3291,47 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   // =====================================================
   const validarConteudo = (texto, tipo, formato) => {
     const problemas = [];
-    
+
     if (!texto || texto.length < 50) {
       problemas.push('Conteúdo muito curto');
       return { valido: false, problemas };
     }
-    
+
     // Validação específica para Instagram Feed
     if (tipo === 'post-instagram' && formato === 'feed') {
       const primeiraLinha = texto.split('\n')[0] || '';
-      
+
       if (primeiraLinha.length > 150) {
         problemas.push(`Gancho muito longo (${primeiraLinha.length} chars). Ideal: até 125.`);
       }
-      
+
       if (!primeiraLinha.match(/[?!…👇🔥⚠️💡]/)) {
         problemas.push('Gancho pode ser mais impactante (sem emoji ou pontuação forte)');
       }
     }
-    
+
     // Validação de hashtags
     const hashtags = texto.match(/#\w+/g) || [];
     const hashtagsComAcento = hashtags.filter(h => /[áàâãéèêíìîóòôõúùûç]/i.test(h));
-    
+
     if (hashtagsComAcento.length > 0) {
       problemas.push(`Hashtags com acento: ${hashtagsComAcento.join(', ')}`);
     }
-    
+
     // Verifica se copiou exemplos genéricos do prompt
     const frasesGenericas = [
       'olá, tudo bem',
       'hoje vou falar sobre',
       'você sabia que muitas pessoas'
     ];
-    
+
     const textoLower = texto.toLowerCase();
     frasesGenericas.forEach(frase => {
       if (textoLower.includes(frase)) {
         problemas.push(`Possível texto genérico detectado`);
       }
     });
-    
+
     return {
       valido: problemas.length === 0,
       problemas,
@@ -3407,7 +3406,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
       if (imagemPreviewRef.current) imagemPreviewRef.current = null;
       setModoImagem(null);
       setImagemUpload(null);
-      
+
       // Apenas Stories/Reels gera imagem automaticamente
       if (formatoPost === 'stories' || formatoPost === 'reels') {
         setLoadingImagem(true);
@@ -4545,7 +4544,8 @@ Crie agora:`;
               </h2>
 
               {conteudoGerado && (
-                <div className="flex flex-wrap gap-2 justify-end">
+                <div className="flex flex-wrap gap-2 justify-end items-center">
+                  {/* Botão Editar/Visualizar */}
                   <button
                     onClick={() => setModoEdicao(!modoEdicao)}
                     className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${modoEdicao
@@ -4556,13 +4556,8 @@ Crie agora:`;
                     <Edit3 className="w-4 h-4" />
                     <span className="whitespace-nowrap">{modoEdicao ? 'Visualizar' : 'Editar'}</span>
                   </button>
-                  <button
-                    onClick={copiarConteudo}
-                    className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-all"
-                  >
-                    {copiado ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    <span className="whitespace-nowrap">{copiado ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
+
+                  {/* Botão Agendar */}
                   <button
                     onClick={() => setMostrarModalAgendar(true)}
                     className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 text-sm transition-all"
@@ -4570,40 +4565,92 @@ Crie agora:`;
                     <Calendar className="w-4 h-4" />
                     <span className="whitespace-nowrap">Agendar</span>
                   </button>
+
+                  {/* Botão Baixar (só aparece se tiver imagem) */}
                   {imagemPreview && (
-                    <>
-                      <button
-                        onClick={async () => {
-                          const response = await fetch(imagemPreview);
-                          const blob = await response.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = "juriscontent-post.png";
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                        }}
-                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="whitespace-nowrap">Baixar</span>
-                      </button>
-                      <button
-                        onClick={() => window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank")}
-                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all font-medium"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="whitespace-nowrap hidden sm:inline">WhatsApp</span>
-                      </button>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(imagemPreview); alert("Link copiado!"); }}
-                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all font-medium"
-                      >
-                        <Link2 className="w-4 h-4" />
-                        <span className="whitespace-nowrap hidden sm:inline">Link</span>
-                      </button>
-                    </>
+                    <button
+                      onClick={async () => {
+                        const response = await fetch(imagemPreview);
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "juriscontent-post.png";
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                      }}
+                      className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="whitespace-nowrap">Baixar</span>
+                    </button>
                   )}
+
+                  {/* Menu Dropdown - Mais Ações */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setMostrarMenuAcoes(!mostrarMenuAcoes)}
+                      className="flex items-center justify-center p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
+                      title="Mais ações"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {mostrarMenuAcoes && (
+                      <>
+                        {/* Overlay para fechar ao clicar fora */}
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setMostrarMenuAcoes(false)}
+                        />
+
+                        {/* Menu */}
+                        <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                          {/* Copiar */}
+                          <button
+                            onClick={() => {
+                              copiarConteudo();
+                              setMostrarMenuAcoes(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700 text-white text-sm transition-all"
+                          >
+                            {copiado ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                            <span>{copiado ? 'Copiado!' : 'Copiar texto'}</span>
+                          </button>
+
+                          {/* WhatsApp (só se tiver imagem) */}
+                          {imagemPreview && (
+                            <button
+                              onClick={() => {
+                                window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank");
+                                setMostrarMenuAcoes(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700 text-white text-sm transition-all"
+                            >
+                              <MessageCircle className="w-4 h-4 text-green-400" />
+                              <span>Enviar WhatsApp</span>
+                            </button>
+                          )}
+
+                          {/* Copiar Link (só se tiver imagem) */}
+                          {imagemPreview && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(imagemPreview);
+                                alert("Link copiado!");
+                                setMostrarMenuAcoes(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700 text-white text-sm transition-all"
+                            >
+                              <Link2 className="w-4 h-4" />
+                              <span>Copiar link</span>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -4764,7 +4811,7 @@ Crie agora:`;
                 const inputClass = "w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500 focus:outline-none";
                 const textareaClass = inputClass + " resize-none";
                 const labelClass = "block text-sm font-medium text-slate-300 mb-1";
-                const updateField = (field, value) => setConteudoStoryEditavel({...c, [field]: value});
+                const updateField = (field, value) => setConteudoStoryEditavel({ ...c, [field]: value });
 
                 // Mapeamento de campos para labels
                 const simpleFields = [
@@ -4820,7 +4867,7 @@ Crie agora:`;
                               {campo === 'explicacao' ? (
                                 <textarea
                                   value={c.estatistica[campo] || ''}
-                                  onChange={(e) => setConteudoStoryEditavel({...c, estatistica: {...c.estatistica, [campo]: e.target.value}})}
+                                  onChange={(e) => setConteudoStoryEditavel({ ...c, estatistica: { ...c.estatistica, [campo]: e.target.value } })}
                                   rows={3}
                                   className={textareaClass}
                                 />
@@ -4828,7 +4875,7 @@ Crie agora:`;
                                 <input
                                   type="text"
                                   value={c.estatistica[campo] || ''}
-                                  onChange={(e) => setConteudoStoryEditavel({...c, estatistica: {...c.estatistica, [campo]: e.target.value}})}
+                                  onChange={(e) => setConteudoStoryEditavel({ ...c, estatistica: { ...c.estatistica, [campo]: e.target.value } })}
                                   className={inputClass}
                                 />
                               )}
