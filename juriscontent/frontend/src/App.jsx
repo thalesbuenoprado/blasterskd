@@ -4938,11 +4938,21 @@ Crie agora:`;
                 </button>
               </div>
 
-              <ConfiguracoesLogo
-                user={user}
-                onSaveLogo={(logo) => setLogoUser(logo)}
-                onClose={() => setMostrarConfig(false)}
-              />
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">Logo do Advogado</h3>
+                  <ConfiguracoesLogo
+                    user={user}
+                    onSaveLogo={(logo) => setLogoUser(logo)}
+                    onClose={() => setMostrarConfig(false)}
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-700">
+                  <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">Cores das Imagens</h3>
+                  <SeletorPaletaCores />
+                </div>
+              </div>
             </div>
           </div>
         )}
