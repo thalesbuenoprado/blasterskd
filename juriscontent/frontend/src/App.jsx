@@ -2525,13 +2525,10 @@ function TrendingTopicsComponent({ onSelectTema, areaAtuacao }) {
 }
 
 // ====================================
-// COMPONENTE DE IDENTIDADE VISUAL
+// COMPONENTE DE PALETA DE CORES (SIMPLIFICADO)
 // ====================================
-function AnaliseLogoComponent() {
-  const { fetchAuth } = useAuth();
-  const [perfilVisual, setPerfilVisual] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [loadingAnalise, setLoadingAnalise] = useState(false);
+function SeletorPaletaCores() {
+  const [paletaSelecionada, setPaletaSelecionada] = useState(null);
   const [mostrarConfig, setMostrarConfig] = useState(false);
 
   // Paletas pré-definidas para advogados
@@ -2540,173 +2537,102 @@ function AnaliseLogoComponent() {
       id: 'classico',
       nome: 'Clássico',
       desc: 'Tradicional e confiável',
-      cores_principais: ['#1e3a5f', '#d4af37', '#0d1b2a'],
-      cor_primaria: '#1e3a5f',
-      cor_secundaria: '#d4af37',
-      cor_acento: '#d4af37',
-      estilo_visual: 'Clássico'
+      cores: ['#1e3a5f', '#d4af37', '#0d1b2a']
     },
     {
       id: 'moderno',
       nome: 'Moderno',
       desc: 'Clean e atual',
-      cores_principais: ['#2d3748', '#4299e1', '#1a202c'],
-      cor_primaria: '#2d3748',
-      cor_secundaria: '#4299e1',
-      cor_acento: '#4299e1',
-      estilo_visual: 'Moderno'
+      cores: ['#2d3748', '#4299e1', '#1a202c']
     },
     {
       id: 'executivo',
       nome: 'Executivo',
       desc: 'Elegante e sofisticado',
-      cores_principais: ['#1a1a2e', '#c9a050', '#16213e'],
-      cor_primaria: '#1a1a2e',
-      cor_secundaria: '#c9a050',
-      cor_acento: '#c9a050',
-      estilo_visual: 'Executivo'
+      cores: ['#1a1a2e', '#c9a050', '#16213e']
     },
     {
       id: 'minimalista',
       nome: 'Minimalista',
       desc: 'Simples e direto',
-      cores_principais: ['#374151', '#9ca3af', '#111827'],
-      cor_primaria: '#374151',
-      cor_secundaria: '#9ca3af',
-      cor_acento: '#f59e0b',
-      estilo_visual: 'Minimalista'
+      cores: ['#374151', '#9ca3af', '#f59e0b']
     },
     {
       id: 'corporativo',
       nome: 'Corporativo',
       desc: 'Profissional e sério',
-      cores_principais: ['#1e40af', '#fbbf24', '#1e3a8a'],
-      cor_primaria: '#1e40af',
-      cor_secundaria: '#fbbf24',
-      cor_acento: '#fbbf24',
-      estilo_visual: 'Corporativo'
+      cores: ['#1e40af', '#fbbf24', '#1e3a8a']
     },
     {
       id: 'verde',
       nome: 'Verde Advocacia',
       desc: 'Natureza e equilíbrio',
-      cores_principais: ['#065f46', '#d4af37', '#064e3b'],
-      cor_primaria: '#065f46',
-      cor_secundaria: '#d4af37',
-      cor_acento: '#d4af37',
-      estilo_visual: 'Verde'
+      cores: ['#065f46', '#d4af37', '#064e3b']
     }
   ];
 
   const selecionarPaleta = (paleta) => {
     try {
-      localStorage.setItem('perfil-visual-advogado', JSON.stringify(paleta));
+      localStorage.setItem('paleta-cores-advogado', JSON.stringify(paleta));
     } catch (e) {
       console.log('Erro ao salvar no localStorage');
     }
-    setPerfilVisual(paleta);
+    setPaletaSelecionada(paleta);
     // Disparar evento para sincronizar com CriadorCompleto
-    window.dispatchEvent(new Event("perfilVisualAtualizado"));
-    setLogoPreview(null);
+    window.dispatchEvent(new Event("paletaCoresAtualizada"));
   };
 
   useEffect(() => {
-    const carregarPerfil = async () => {
+    const carregarPaleta = async () => {
       try {
-        let perfil;
+        let paleta;
         try {
-          perfil = localStorage.getItem('perfil-visual-advogado');
+          // Tentar carregar nova paleta
+          paleta = localStorage.getItem('paleta-cores-advogado');
+
+          // Migração: Se não tiver paleta nova, tentar migrar da antiga
+          if (!paleta) {
+            const perfilAntigo = localStorage.getItem('perfil-visual-advogado');
+            if (perfilAntigo) {
+              const perfil = JSON.parse(perfilAntigo);
+              // Migrar para novo formato
+              const paletaMigrada = {
+                id: perfil.id || 'customizado',
+                nome: perfil.nome || perfil.estilo_visual || 'Customizado',
+                desc: perfil.desc || 'Cores da sua marca',
+                cores: perfil.cores_principais || [
+                  perfil.cor_primaria,
+                  perfil.cor_secundaria,
+                  perfil.cor_acento
+                ].filter(Boolean)
+              };
+              localStorage.setItem('paleta-cores-advogado', JSON.stringify(paletaMigrada));
+              paleta = JSON.stringify(paletaMigrada);
+              console.log('✅ Paleta migrada do formato antigo');
+            }
+          }
         } catch (e) {
           console.log('Acesso ao localStorage bloqueado');
         }
 
-        if (perfil) {
-          setPerfilVisual(JSON.parse(perfil));
+        if (paleta) {
+          setPaletaSelecionada(JSON.parse(paleta));
         }
       } catch (error) {
-        console.log('Erro ao carregar perfil visual:', error);
+        console.log('Erro ao carregar paleta:', error);
       }
     };
-    carregarPerfil();
+    carregarPaleta();
   }, []);
 
-  const handleLogoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    setLogoPreview(URL.createObjectURL(file));
-    setLoadingAnalise(true);
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
+  const removerPaleta = () => {
+    if (confirm('Remover paleta de cores?')) {
       try {
-        const base64 = e.target.result.split(',')[1];
-        console.log('📤 Enviando logo para análise...');
-
-        // Usar backend local (evita problemas de CORS)
-        const response = await fetchAuth('https://blasterskd.com.br/api/analisar-logo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logo: base64 })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Erro ao analisar logo');
-        }
-
-        const data = await response.json();
-        console.log('✅ Resposta da análise:', data);
-
-        const perfil = data.perfil_visual;
-        if (!perfil) {
-          throw new Error('Perfil visual não retornado');
-        }
-
-        // Log detalhado das cores extraídas
-        console.log('🎨 Cores extraídas:');
-        console.log('   - Cores principais:', perfil.cores_principais);
-        console.log('   - Cor primária:', perfil.cor_primaria);
-        console.log('   - Cor secundária:', perfil.cor_secundaria);
-        console.log('   - Cor acento:', perfil.cor_acento);
-        console.log('   - Estilo:', perfil.estilo_visual);
-
-        try {
-          localStorage.setItem('perfil-visual-advogado', JSON.stringify(perfil));
-        } catch (e) {
-          console.log('Não foi possível salvar no localStorage (acesso negado)');
-        }
-        setPerfilVisual(perfil);
-
-        // Mostrar cores no alerta
-        const coresTxt = perfil.cores_principais?.slice(0, 3).join(', ') || 'não identificadas';
-        alert(`✅ Logo analisada!\n\nCores: ${coresTxt}\nEstilo: ${perfil.estilo_visual || 'clássico'}\n\nSuas imagens usarão essas cores!`);
-      } catch (error) {
-        console.error('❌ Erro na análise:', error);
-        alert('Erro ao analisar logo: ' + error.message);
-      } finally {
-        setLoadingAnalise(false);
-      }
-    };
-
-    reader.onerror = () => {
-      console.error('❌ Erro ao ler arquivo');
-      alert('Erro ao ler arquivo da logo');
-      setLoadingAnalise(false);
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const removerPerfil = () => {
-    if (confirm('Remover identidade visual?')) {
-      try {
-        localStorage.removeItem('perfil-visual-advogado');
+        localStorage.removeItem('paleta-cores-advogado');
       } catch (e) {
         console.log('Erro ao limpar localStorage');
       }
-      setPerfilVisual(null);
-      setLogoPreview(null);
+      setPaletaSelecionada(null);
     }
   };
 
@@ -2715,13 +2641,13 @@ function AnaliseLogoComponent() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <Palette className="w-5 h-5 text-amber-400" />
-          Identidade Visual
+          Paleta de Cores
         </h3>
         <button
           onClick={() => setMostrarConfig(!mostrarConfig)}
           className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
         >
-          {mostrarConfig ? 'Ocultar' : 'Configurar'}
+          {mostrarConfig ? 'Ocultar' : 'Escolher'}
         </button>
       </div>
 
@@ -2735,13 +2661,13 @@ function AnaliseLogoComponent() {
                 <button
                   key={paleta.id}
                   onClick={() => selecionarPaleta(paleta)}
-                  className={`p-3 rounded-lg border transition-all text-left ${perfilVisual?.id === paleta.id
+                  className={`p-3 rounded-lg border transition-all text-left ${paletaSelecionada?.id === paleta.id
                     ? 'border-amber-400 bg-amber-400/10'
                     : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
                     }`}
                 >
                   <div className="flex gap-1 mb-2">
-                    {paleta.cores_principais.map((cor, idx) => (
+                    {paleta.cores.map((cor, idx) => (
                       <div
                         key={idx}
                         className="w-5 h-5 rounded-full border border-slate-500"
@@ -2749,7 +2675,7 @@ function AnaliseLogoComponent() {
                       />
                     ))}
                   </div>
-                  <div className={`text-sm font-medium ${perfilVisual?.id === paleta.id ? 'text-amber-400' : 'text-white'}`}>
+                  <div className={`text-sm font-medium ${paletaSelecionada?.id === paleta.id ? 'text-amber-400' : 'text-white'}`}>
                     {paleta.nome}
                   </div>
                   <div className="text-xs text-slate-400">{paleta.desc}</div>
@@ -2757,61 +2683,24 @@ function AnaliseLogoComponent() {
               ))}
             </div>
           </div>
-          {/* Divisor */}
-          <div className="flex items-center gap-3 my-4">
-            <div className="flex-1 h-px bg-slate-600"></div>
-            <span className="text-xs text-slate-500">ou analise sua logo</span>
-            <div className="flex-1 h-px bg-slate-600"></div>
-          </div>
-          {!perfilVisual && (
-            <div className="relative border-2 border-dashed border-slate-600 rounded-lg p-8 hover:border-amber-400 transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                disabled={loadingAnalise}
-              />
-              <div className="text-center">
-                {loadingAnalise ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
-                    <p className="text-slate-300 text-sm">Analisando logo...</p>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                    <p className="text-slate-300 text-sm">Arraste sua logo aqui</p>
-                    <p className="text-slate-500 text-xs mt-1">PNG, JPG • Máx 5MB</p>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
 
-          {perfilVisual && (
+          {paletaSelecionada && (
             <div className="bg-slate-900/50 rounded-lg p-4 border border-amber-500/30">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Check className="w-5 h-5 text-green-400" />
-                  <span className="text-sm font-semibold text-green-400">Logo analisada!</span>
+                  <span className="text-sm font-semibold text-green-400">Paleta selecionada!</span>
                 </div>
-                <button onClick={removerPerfil} className="text-slate-400 hover:text-red-400">
+                <button onClick={removerPaleta} className="text-slate-400 hover:text-red-400">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-
-              {logoPreview && (
-                <div className="mb-4 flex justify-center">
-                  <img src={logoPreview} alt="Logo" className="max-h-24 rounded" />
-                </div>
-              )}
 
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="text-slate-400">Cores:</span>
                   <div className="flex gap-2 mt-2">
-                    {perfilVisual.cores_principais?.map((cor, idx) => (
+                    {paletaSelecionada.cores?.map((cor, idx) => (
                       <div key={idx} className="flex flex-col items-center gap-1">
                         <div className="w-14 h-14 rounded-lg border-2 border-slate-600" style={{ backgroundColor: cor }} />
                         <span className="text-xs text-slate-500">{cor}</span>
@@ -2819,15 +2708,11 @@ function AnaliseLogoComponent() {
                     ))}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-400">Estilo:</span>
-                  <span className="text-white">{perfilVisual.estilo_visual}</span>
-                </div>
               </div>
 
               <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
                 <p className="text-xs text-amber-400">
-                  ✨ Suas imagens usarão as cores da sua marca!
+                  ✨ Suas imagens usarão as cores da sua paleta!
                 </p>
               </div>
             </div>
@@ -2835,15 +2720,15 @@ function AnaliseLogoComponent() {
         </div>
       )}
 
-      {!mostrarConfig && perfilVisual && (
+      {!mostrarConfig && paletaSelecionada && (
         <div className="flex items-center gap-3">
           <Check className="w-4 h-4 text-green-400" />
           <div className="flex gap-1.5">
-            {perfilVisual.cores_principais?.slice(0, 3).map((cor, idx) => (
+            {paletaSelecionada.cores?.slice(0, 3).map((cor, idx) => (
               <div key={idx} className="w-7 h-7 rounded border-2 border-slate-600" style={{ backgroundColor: cor }} />
             ))}
           </div>
-          <span className="text-sm text-slate-300">{perfilVisual.estilo_visual}</span>
+          <span className="text-sm text-slate-300">{paletaSelecionada.nome}</span>
         </div>
       )}
     </div>
@@ -3164,7 +3049,7 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   const [imagemUpload, setImagemUpload] = useState(null);
   const [imagemCarregada, setImagemCarregada] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
-  const [perfilVisual, setPerfilVisual] = useState(null);
+  const [paletaCores, setPaletaCores] = useState(null);
 
   // Derivar formatoImagem do formatoPost selecionado
   const formatoImagem = (() => {
@@ -3177,15 +3062,36 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   })();
 
   useEffect(() => {
-    const carregarPerfil = () => {
+    const carregarPaleta = () => {
       try {
-        const perfil = localStorage.getItem("perfil-visual-advogado");
-        if (perfil) {
-          const perfilParsed = JSON.parse(perfil);
-          setPerfilVisual(perfilParsed);
+        let paleta = localStorage.getItem("paleta-cores-advogado");
 
-          // Mapear estilo_visual para estiloImagem
-          if (perfilParsed.estilo_visual) {
+        // Migração: tentar carregar do formato antigo se não tiver novo
+        if (!paleta) {
+          const perfilAntigo = localStorage.getItem("perfil-visual-advogado");
+          if (perfilAntigo) {
+            const perfil = JSON.parse(perfilAntigo);
+            paleta = JSON.stringify({
+              id: perfil.id || 'customizado',
+              nome: perfil.nome || perfil.estilo_visual || 'Customizado',
+              desc: perfil.desc || 'Cores da sua marca',
+              cores: perfil.cores_principais || [
+                perfil.cor_primaria,
+                perfil.cor_secundaria,
+                perfil.cor_acento
+              ].filter(Boolean)
+            });
+            localStorage.setItem("paleta-cores-advogado", paleta);
+            console.log('✅ Paleta migrada do formato antigo');
+          }
+        }
+
+        if (paleta) {
+          const paletaParsed = JSON.parse(paleta);
+          setPaletaCores(paletaParsed);
+
+          // Mapear nome da paleta para estiloImagem
+          if (paletaParsed.nome) {
             const estiloMap = {
               'classico': 'classico',
               'clássico': 'classico',
@@ -3199,26 +3105,26 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
               'humanizado': 'acolhedor',
               'minimalista': 'moderno'
             };
-            const estiloLower = perfilParsed.estilo_visual.toLowerCase();
+            const estiloLower = paletaParsed.nome.toLowerCase();
             const novoEstilo = estiloMap[estiloLower] || 'classico';
             setEstiloImagem(novoEstilo);
-            console.log('🎨 Estilo visual aplicado:', perfilParsed.estilo_visual, '→', novoEstilo);
+            console.log('🎨 Estilo visual aplicado:', paletaParsed.nome, '→', novoEstilo);
           }
         }
       } catch (error) {
-        console.log("Sem perfil visual salvo");
+        console.log("Erro ao carregar paleta:", error);
       }
     };
-    carregarPerfil();
+    carregarPaleta();
     // Listener para mudanças no localStorage (quando paleta é selecionada)
     const handleStorageChange = () => {
-      carregarPerfil();
+      carregarPaleta();
     };
     window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("perfilVisualAtualizado", handleStorageChange);
+    window.addEventListener("paletaCoresAtualizada", handleStorageChange);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("perfilVisualAtualizado", handleStorageChange);
+      window.removeEventListener("paletaCoresAtualizada", handleStorageChange);
     };
   }, []);
   // Estados para configurações e logo
@@ -3791,7 +3697,7 @@ Crie agora:`;
           tema: tema,
           area: areaAtuacao,
           template: templateStory,
-          perfil_visual: perfilVisual,
+          paleta_cores: paletaCores,
           nome_advogado: user?.nome || '',
           oab: user?.oab || '',
           telefone: user?.telefone || '',
@@ -3909,7 +3815,7 @@ Crie agora:`;
           estilo: estiloImagem,
           formato: formatoUsar,
           texto: textoUsar?.substring(0, 600),
-          perfil_visual: perfilVisual
+          paleta_cores: paletaCores
         })
       });
 
@@ -3985,12 +3891,12 @@ Crie agora:`;
       console.log('🎨 Adicionando texto...');
       console.log('🖼️ Logo a enviar:', logoUser ? (logoUser.substring(0, 60) + '...') : 'NENHUMA');
       console.log('🎨 Estilo:', estiloImagem);
-      console.log('🎨 Perfil Visual:', perfilVisual ? 'SIM' : 'NÃO');
+      console.log('🎨 Paleta de Cores:', paletaCores ? 'SIM' : 'NÃO');
 
-      // Extrair cores do perfilVisual se existir
-      const corPrimaria = perfilVisual?.cor_primaria || perfilVisual?.cores_principais?.[0] || null;
-      const corSecundaria = perfilVisual?.cor_secundaria || perfilVisual?.cores_principais?.[1] || null;
-      const corAcento = perfilVisual?.cor_acento || perfilVisual?.cores_principais?.[0] || null;
+      // Extrair cores da paletaCores se existir
+      const corPrimaria = paletaCores?.cores?.[0] || null;
+      const corSecundaria = paletaCores?.cores?.[1] || null;
+      const corAcento = paletaCores?.cores?.[2] || paletaCores?.cores?.[0] || null;
 
       console.log('🎨 Cores a enviar:', { corPrimaria, corSecundaria, corAcento });
 
@@ -4135,8 +4041,8 @@ Crie agora:`;
           </div>
         </div>
 
-        {/* CARD DE PERFIL E IDENTIDADE VISUAL */}
-        <div className={`mb-6 p-4 rounded-xl border ${(!logoUser || !perfilVisual) ? 'bg-amber-500/10 border-amber-500/50' : 'bg-slate-800/50 border-slate-700'}`}>
+        {/* CARD DE PERFIL E PALETA DE CORES */}
+        <div className={`mb-6 p-4 rounded-xl border ${(!logoUser && !paletaCores) ? 'bg-amber-500/10 border-amber-500/50' : 'bg-slate-800/50 border-slate-700'}`}>
           <div className="flex flex-wrap items-center gap-4">
             {/* Logo */}
             <div className="flex items-center gap-3">
@@ -4159,17 +4065,17 @@ Crie agora:`;
             </div>
             {/* Separador */}
             <div className="hidden sm:block w-px h-10 bg-slate-600" />
-            {/* Identidade Visual */}
+            {/* Paleta de Cores */}
             <div className="flex items-center gap-3">
-              {perfilVisual ? (
+              {paletaCores ? (
                 <>
                   <div className="flex gap-1">
-                    {perfilVisual.cores_principais?.slice(0, 3).map((cor, idx) => (
+                    {paletaCores.cores?.slice(0, 3).map((cor, idx) => (
                       <div key={idx} className="w-6 h-6 rounded-full border border-slate-600" style={{ backgroundColor: cor }} />
                     ))}
                   </div>
                   <div className="text-sm text-slate-300">
-                    <span className="text-amber-400 font-medium">Estilo:</span> {perfilVisual.estilo_visual || 'Definido'}
+                    <span className="text-amber-400 font-medium">Paleta:</span> {paletaCores.nome || 'Definida'}
                   </div>
                 </>
               ) : (
@@ -4178,16 +4084,16 @@ Crie agora:`;
                   className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-amber-400/50 bg-slate-700/30 cursor-pointer hover:bg-slate-700/50 transition-all"
                 >
                   <Palette className="w-5 h-5 text-amber-400/50" />
-                  <span className="text-sm text-amber-400/70">Definir identidade visual</span>
+                  <span className="text-sm text-amber-400/70">Escolher paleta de cores</span>
                 </div>
               )}
             </div>
             {/* Alerta se faltar algo */}
-            {(!logoUser && !perfilVisual) && (
+            {(!logoUser && !paletaCores) && (
               <div className="flex-1 flex items-center justify-end">
                 <div className="flex items-center gap-2 text-amber-400 text-sm">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Complete seu perfil para melhores resultados</span>
+                  <span>Defina sua paleta para imagens personalizadas</span>
                 </div>
               </div>
             )}
