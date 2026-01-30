@@ -1597,7 +1597,7 @@ function MiniStoryPreview({ template }) {
   return <div className={base} />;
 }
 
-function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoCompleto = false, imagemPreview = null, onPublicar = null, onVisualizarImagem = null, loadingImagem = false }) {
+function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoCompleto = false, imagemPreview = null, onPublicar = null, onVisualizarImagem = null, loadingImagem = false, tempoGeracao = 0, tentativaGeracao = 0, statusGeracao = '' }) {
   const [expandido, setExpandido] = useState(false);
 
   if (!conteudo) return null;
@@ -1634,12 +1634,12 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
   const { gancho, temMais, total } = extrairGancho(texto);
 
   // Preview Instagram Stories/Reels (vertical 9:16)
-  // Preview Instagram Stories/Reels (vertical 9:16)
   const PreviewInstagramStories = () => {
     console.log('🖼️ [PREVIEW STORIES] Renderizando com imagemPreview:', imagemPreview ? 'POSSUI' : 'NULL');
 
     return (
-      <div className="bg-black rounded-2xl overflow-hidden w-[280px] mx-auto shadow-2xl aspect-[9/16] relative border border-slate-800">
+      <div className="flex justify-center items-center w-full">
+        <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative border border-slate-800">
         {/* Camada 1: Fundo (Imagem ou Gradiente) */}
         <div className="absolute inset-0 z-0">
           {imagemPreview ? (
@@ -1706,13 +1706,15 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
             </span>
           </div>
         )}
+        </div>
       </div>
     );
   };
 
   // Preview Instagram Feed (quadrado)
   const PreviewInstagram = () => (
-    <div className="bg-white rounded-xl overflow-hidden max-w-[360px] mx-auto shadow-2xl">
+    <div className="flex justify-center items-start w-full">
+      <div className="bg-white rounded-xl overflow-hidden w-full max-w-[360px] shadow-2xl">
       {/* Header do Post */}
       <div className="flex items-center gap-3 p-3 border-b border-gray-100">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-pink-500 to-purple-600 p-0.5">
@@ -1827,12 +1829,14 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
 
         <p className="text-xs text-gray-400 mt-2 uppercase">Há 2 horas</p>
       </div>
+      </div>
     </div>
   );
 
   // Preview Facebook
   const PreviewFacebook = () => (
-    <div className="bg-white rounded-xl overflow-hidden max-w-[400px] mx-auto shadow-2xl">
+    <div className="flex justify-center items-start w-full">
+      <div className="bg-white rounded-xl overflow-hidden w-full max-w-[400px] shadow-2xl">
       {/* Header */}
       <div className="flex items-center gap-3 p-3">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
@@ -1932,6 +1936,7 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
 
@@ -1950,7 +1955,8 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
     const legenda = extrairLegendaTikTok(conteudo);
 
     return (
-      <div className="bg-black rounded-2xl overflow-hidden max-w-[280px] mx-auto shadow-2xl aspect-[9/16] relative">
+      <div className="flex justify-center items-center w-full">
+        <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative">
         {/* Área do vídeo */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-800 via-slate-900 to-black flex items-center justify-center group">
           {imagemPreview ? (
@@ -2059,6 +2065,7 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
             </div>
           </div>
         )}
+        </div>
       </div>
     );
   };
@@ -2085,7 +2092,8 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
 
   // Preview Facebook Stories
   const PreviewFacebookStories = () => (
-    <div className="bg-black rounded-2xl overflow-hidden max-w-[280px] mx-auto shadow-2xl aspect-[9/16] relative">
+    <div className="flex justify-center items-center w-full">
+      <div className="bg-black rounded-2xl overflow-hidden w-[280px] shadow-2xl aspect-[9/16] relative">
       {/* Imagem de fundo fullscreen */}
       <div className="absolute inset-0">
         {imagemPreview ? (
@@ -2156,6 +2164,7 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
           📱 Stories
         </span>
       </div>
+      </div>
     </div>
   );
 
@@ -2206,9 +2215,15 @@ function PreviewRedeSocial({ tipo, formato = 'feed', conteudo, usuario, modoComp
           {renderPreview()}
           {loadingImagem && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
-              <div className="bg-white/90 px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                <span className="text-sm font-medium text-slate-700">Criando imagem...</span>
+              <div className="bg-slate-800/95 px-6 py-4 rounded-xl shadow-lg flex flex-col items-center gap-2 border border-slate-600">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+                <span className="text-sm font-medium text-white">{statusGeracao || 'Criando imagem...'}</span>
+                {tempoGeracao > 0 && (
+                  <span className="text-xs text-slate-400">{tempoGeracao}s{tentativaGeracao > 1 ? ` • Tentativa ${tentativaGeracao}` : ''}</span>
+                )}
+                {tempoGeracao > 15 && (
+                  <span className="text-xs text-amber-400/80">A imagem IA pode demorar até 90s</span>
+                )}
               </div>
             </div>
           )}
@@ -3137,8 +3152,15 @@ function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalv
   const [estiloImagem, setEstiloImagem] = useState('classico');
   const [templateStory, setTemplateStory] = useState('voce-sabia');
   const [imagemGerada, setImagemGerada] = useState(null);
+  const [conteudoStoryEditavel, setConteudoStoryEditavel] = useState(null);
+  const [mostrarEditorConteudo, setMostrarEditorConteudo] = useState(false);
+  const [loadingConteudo, setLoadingConteudo] = useState(false);
 
   const [loadingImagem, setLoadingImagem] = useState(false);
+  const [tempoGeracao, setTempoGeracao] = useState(0);
+  const [tentativaGeracao, setTentativaGeracao] = useState(0);
+  const [statusGeracao, setStatusGeracao] = useState('');
+  const timerGeracaoRef = useRef(null);
   const [modoImagem, setModoImagem] = useState(null); // 'upload' ou 'gerar' ou null
   const [imagemUpload, setImagemUpload] = useState(null);
   const [imagemCarregada, setImagemCarregada] = useState(false);
@@ -3761,42 +3783,101 @@ Crie agora:`;
     console.log('✅ Loading iniciado');
 
     try {
-      // Se for Stories, usar nova API de templates
+      // Se for Stories
       if (formatoUsar === 'stories') {
         console.log('📱 Gerando Story com template:', templateStory);
 
-        const storyResponse = await fetchAuth('https://blasterskd.com.br/api/gerar-story', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            texto: textoUsar?.substring(0, 600),
-            tema: tema,
-            area: areaAtuacao,
-            template: templateStory,
-            perfil_visual: perfilVisual,
-            nome_advogado: user?.nome || user?.nome || '',
-            oab: user?.oab || user?.oab || '',
-            telefone: user?.telefone || '',
-            instagram: user?.instagram || '',
-            logo: logoUser || perfil?.logo_url || '',
-          })
-        });
+        const storyBody = {
+          texto: textoUsar?.substring(0, 600),
+          tema: tema,
+          area: areaAtuacao,
+          template: templateStory,
+          perfil_visual: perfilVisual,
+          nome_advogado: user?.nome || '',
+          oab: user?.oab || '',
+          telefone: user?.telefone || '',
+          instagram: user?.instagram || '',
+          logo: logoUser || perfil?.logo_url || '',
+        };
 
-        if (!storyResponse.ok) {
-          throw new Error('Erro ao gerar Story');
+        if (conteudoStoryEditavel) {
+          console.log('🎨 Renderizando com conteúdo editado');
+          storyBody.conteudo_editado = conteudoStoryEditavel;
         }
 
-        const storyData = await storyResponse.json();
+        // Iniciar temporizador
+        setTempoGeracao(0);
+        setTentativaGeracao(1);
+        setStatusGeracao('Gerando conteúdo com IA...');
+        timerGeracaoRef.current = setInterval(() => {
+          setTempoGeracao(prev => prev + 1);
+        }, 1000);
 
-        if (storyData.success && storyData.imageUrl) {
+        const MAX_TENTATIVAS = 2;
+        let storyData = null;
+
+        for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+          try {
+            setTentativaGeracao(tentativa);
+            if (tentativa === 1) {
+              setStatusGeracao('Gerando conteúdo com IA...');
+            } else {
+              setStatusGeracao(`Tentativa ${tentativa}/${MAX_TENTATIVAS} — Regerando...`);
+            }
+
+            const storyResponse = await fetchAuth('https://blasterskd.com.br/api/gerar-story', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(storyBody)
+            });
+
+            if (!storyResponse.ok) {
+              const errData = await storyResponse.json().catch(() => ({}));
+              const isTimeout = errData?.details?.includes('timeout') || errData?.details?.includes('Timeout');
+              if (isTimeout && tentativa < MAX_TENTATIVAS) {
+                console.log(`⚠️ Timeout na tentativa ${tentativa}, retentando...`);
+                setStatusGeracao(`Timeout na renderização. Tentando novamente...`);
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
+              throw new Error(errData?.details || 'Erro ao gerar Story');
+            }
+
+            storyData = await storyResponse.json();
+            if (storyData.success && storyData.imageUrl) {
+              setStatusGeracao('Finalizando...');
+              break;
+            } else {
+              throw new Error('Falha ao gerar Story');
+            }
+          } catch (e) {
+            if (tentativa >= MAX_TENTATIVAS) {
+              clearInterval(timerGeracaoRef.current);
+              timerGeracaoRef.current = null;
+              setStatusGeracao('');
+              throw e;
+            }
+            console.log(`⚠️ Erro tentativa ${tentativa}:`, e.message);
+            setStatusGeracao(`Erro na tentativa ${tentativa}. Retentando...`);
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+
+        // Parar temporizador
+        clearInterval(timerGeracaoRef.current);
+        timerGeracaoRef.current = null;
+        setStatusGeracao('');
+
+        if (storyData?.success && storyData?.imageUrl) {
           console.log('✅ Story gerado:', storyData.imageUrl);
-          console.log('📸 [STORIES] Atualizando estados com a imagem...');
-          imagemPreviewRef.current = storyData.imageUrl; // Salva no ref PRIMEIRO
+          imagemPreviewRef.current = storyData.imageUrl;
           setImagemGerada(storyData.imageUrl);
           setImagemPreview(storyData.imageUrl);
-          console.log('✅ [STORIES] Estados atualizados! imagemPreview:', storyData.imageUrl.substring(0, 60));
 
-          // Salvar no Supabase
+          if (storyData.conteudo) {
+            setConteudoStoryEditavel(storyData.conteudo);
+          }
+
           if (onSalvarImagem) {
             try {
               await onSalvarImagem({
@@ -3806,15 +3887,13 @@ Crie agora:`;
                 tipoConteudo: tipoConteudo,
                 formato: 'stories'
               });
-              console.log('✅ Story salvo no Supabase');
             } catch (e) {
-              console.log('⚠️ Erro ao salvar Story no Supabase:', e);
+              console.log('⚠️ Erro ao salvar Story:', e);
             }
           }
-        } else {
-          throw new Error('Falha ao gerar Story');
         }
 
+        setConteudoStoryEditavel(storyData?.conteudo || null);
         setLoadingImagem(false);
         return;
       }
@@ -4002,41 +4081,42 @@ Crie agora:`;
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 w-full sm:w-auto justify-center">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-center sm:justify-end">
             {onAbrirGaleria && (
               <button
                 onClick={onAbrirGaleria}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all text-sm"
                 title="Minhas Imagens"
               >
-                <ImageIcon className="w-5 h-5" />
-                <span>Galeria</span>
+                <ImageIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Galeria</span>
               </button>
             )}
             <button
               onClick={() => setMostrarMeusAgendamentos(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
+              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all text-sm"
               title="Meus Agendamentos"
             >
-              <Calendar className="w-5 h-5" />
-              <span>Agendamentos</span>
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Agendamentos</span>
             </button>
             {onAbrirPerfil && (
               <button
                 onClick={onAbrirPerfil}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all text-sm"
                 title="Meu Perfil"
               >
-                <Settings className="w-5 h-5" />
-                <span>Perfil</span>
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Perfil</span>
               </button>
             )}
             <button
               onClick={() => setMostrarConfig(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 transition-all"
+              className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 transition-all text-sm"
+              title="Configurar Identidade Visual"
             >
-              <Palette className="w-5 h-5" />
-              <span>Visual</span>
+              <Palette className="w-4 h-4" />
+              <span className="hidden sm:inline">Visual</span>
             </button>
             <button
               onClick={() => {
@@ -4047,10 +4127,11 @@ Crie agora:`;
                   console.log('❌ onLogout não está definido!');
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-red-600/80 rounded-lg text-white transition-all"
+              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-red-600/80 rounded-lg text-white transition-all text-sm"
+              title="Sair do Sistema"
             >
-              <LogOut className="w-5 h-5" />
-              <span>Sair</span>
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
@@ -4103,7 +4184,7 @@ Crie agora:`;
               )}
             </div>
             {/* Alerta se faltar algo */}
-            {(!logoUser || !perfilVisual) && (
+            {(!logoUser && !perfilVisual) && (
               <div className="flex-1 flex items-center justify-end">
                 <div className="flex items-center gap-2 text-amber-400 text-sm">
                   <AlertCircle className="w-4 h-4" />
@@ -4464,32 +4545,31 @@ Crie agora:`;
               </h2>
 
               {conteudoGerado && (
-                <div className="grid grid-cols-2 sm:flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button
                     onClick={() => setModoEdicao(!modoEdicao)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${modoEdicao
+                    className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${modoEdicao
                       ? 'bg-amber-500 text-white'
                       : 'bg-slate-700 hover:bg-slate-600 text-white'
                       }`}
                   >
                     <Edit3 className="w-4 h-4" />
-                    {modoEdicao ? 'Visualizar' : 'Editar'}
+                    <span className="whitespace-nowrap">{modoEdicao ? 'Visualizar' : 'Editar'}</span>
                   </button>
                   <button
                     onClick={copiarConteudo}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-all"
+                    className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-all"
                   >
                     {copiado ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    {copiado ? 'Copiado!' : 'Copiar'}
+                    <span className="whitespace-nowrap">{copiado ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                   <button
                     onClick={() => setMostrarModalAgendar(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 text-sm transition-all"
+                    className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 text-sm transition-all"
                   >
                     <Calendar className="w-4 h-4" />
-                    Agendar
+                    <span className="whitespace-nowrap">Agendar</span>
                   </button>
-                  {/* Botão de imagem removido - agora é automático */}
                   {imagemPreview && (
                     <>
                       <button
@@ -4503,24 +4583,24 @@ Crie agora:`;
                           a.click();
                           window.URL.revokeObjectURL(url);
                         }}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
+                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
                       >
                         <Download className="w-4 h-4" />
-                        Baixar
+                        <span className="whitespace-nowrap">Baixar</span>
                       </button>
                       <button
                         onClick={() => window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank")}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all font-medium"
+                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all font-medium"
                       >
                         <MessageCircle className="w-4 h-4" />
-                        WhatsApp
+                        <span className="whitespace-nowrap hidden sm:inline">WhatsApp</span>
                       </button>
                       <button
                         onClick={() => { navigator.clipboard.writeText(imagemPreview); alert("Link copiado!"); }}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all font-medium"
+                        className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all font-medium"
                       >
                         <Link2 className="w-4 h-4" />
-                        Link
+                        <span className="whitespace-nowrap hidden sm:inline">Link</span>
                       </button>
                     </>
                   )}
@@ -4547,15 +4627,44 @@ Crie agora:`;
                   /* MODO PREVIEW */
                   <div className="flex flex-col h-full">
                     {/* OPÇÕES DE IMAGEM - apenas para Feed */}
+                    {/* OPÇÕES STORY - editar conteúdo e regerar */}
+                    {(formatoPost === 'stories' || formatoPost === 'reels') && imagemPreview && !loadingImagem && conteudoStoryEditavel && (
+                      <div className="mb-4 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+                        <p className="text-sm text-slate-300 mb-3 text-center font-medium">
+                          Ajustar Story:
+                        </p>
+                        <div className="flex gap-3 justify-center flex-wrap items-center">
+                          <button
+                            onClick={() => setMostrarEditorConteudo(true)}
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-all font-medium"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            <span className="whitespace-nowrap">Editar Conteúdo</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setConteudoStoryEditavel(null);
+                              setLoadingImagem(true);
+                              gerarImagem(conteudoGerado, 'stories');
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="whitespace-nowrap">Regerar Story</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {/* OPÇÕES DE IMAGEM - apenas para Feed */}
                     {formatoPost === 'feed' && !loadingImagem && (
                       <div className="mb-4 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
-                        <p className="text-sm text-slate-300 mb-3 text-center">
+                        <p className="text-sm text-slate-300 mb-3 text-center font-medium">
                           {imagemPreview ? 'Trocar imagem:' : 'Como deseja adicionar a imagem?'}
                         </p>
-                        <div className="flex gap-3 justify-center flex-wrap">
-                          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm cursor-pointer transition-all">
+                        <div className="flex gap-3 justify-center flex-wrap items-center">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm cursor-pointer transition-all font-medium">
                             <Upload className="w-4 h-4" />
-                            {imagemPreview ? 'Enviar outra' : 'Fazer Upload'}
+                            <span className="whitespace-nowrap">{imagemPreview ? 'Enviar outra' : 'Fazer Upload'}</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -4580,26 +4689,31 @@ Crie agora:`;
                               setLoadingImagem(true);
                               gerarImagem(limparConteudo(conteudoGerado), 'quadrado');
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
                           >
                             <Sparkles className="w-4 h-4" />
-                            {imagemPreview ? 'Gerar nova' : 'Gerar com IA'}
+                            <span className="whitespace-nowrap">{imagemPreview ? 'Gerar nova' : 'Gerar com IA'}</span>
                           </button>
                         </div>
                       </div>
                     )}
-                    <div className="flex-1 min-h-0">
-                      <PreviewRedeSocial
-                        key={imagemPreviewRef.current || imagemPreview || 'no-image'}
-                        tipo={tipoConteudo}
-                        formato={formatoPost || 'feed'}
-                        conteudo={conteudoGerado}
-                        usuario={user}
-                        modoCompleto={true}
-                        imagemPreview={imagemPreviewRef.current || imagemPreview}
-                        onVisualizarImagem={imagemPreview ? () => setMostrarImagemFull(true) : null}
-                        loadingImagem={loadingImagem}
-                      />
+                    <div className="flex-1 min-h-0 flex items-start justify-center overflow-auto">
+                      <div className="w-full">
+                        <PreviewRedeSocial
+                          key={imagemPreviewRef.current || imagemPreview || 'no-image'}
+                          tipo={tipoConteudo}
+                          formato={formatoPost || 'feed'}
+                          conteudo={conteudoGerado}
+                          usuario={user}
+                          modoCompleto={true}
+                          imagemPreview={imagemPreviewRef.current || imagemPreview}
+                          onVisualizarImagem={imagemPreview ? () => setMostrarImagemFull(true) : null}
+                          loadingImagem={loadingImagem}
+                          tempoGeracao={tempoGeracao}
+                          tentativaGeracao={tentativaGeracao}
+                          statusGeracao={statusGeracao}
+                        />
+                      </div>
                     </div>
                   </div>
                 )
@@ -4624,6 +4738,180 @@ Crie agora:`;
 
         </div>
 
+        {/* MODAL EDITOR DE CONTEÚDO STORY */}
+        {mostrarEditorConteudo && conteudoStoryEditavel && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-slate-700">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-amber-400" />
+                  Editar Conteúdo do Story
+                </h2>
+                <button
+                  onClick={() => {
+                    setMostrarEditorConteudo(false);
+                    setConteudoStoryEditavel(null);
+                  }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Renderiza campos dinamicamente baseado no conteúdo */}
+              {(() => {
+                const c = conteudoStoryEditavel;
+                const inputClass = "w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500 focus:outline-none";
+                const textareaClass = inputClass + " resize-none";
+                const labelClass = "block text-sm font-medium text-slate-300 mb-1";
+                const updateField = (field, value) => setConteudoStoryEditavel({...c, [field]: value});
+
+                // Mapeamento de campos para labels
+                const simpleFields = [
+                  { key: 'pergunta', label: 'Pergunta / Título' },
+                  { key: 'headline', label: 'Título' },
+                  { key: 'titulo', label: 'Título' },
+                  { key: 'subtitulo', label: 'Subtítulo' },
+                  { key: 'alerta', label: 'Alerta' },
+                  { key: 'prazo', label: 'Prazo' },
+                  { key: 'acao', label: 'Ação / CTA' },
+                  { key: 'insight', label: 'Insight' },
+                  { key: 'conclusao', label: 'Conclusão' },
+                  { key: 'dica', label: 'Dica' },
+                  { key: 'destaque', label: 'Destaque / CTA' },
+                  { key: 'fonte', label: 'Fonte' },
+                ];
+
+                const textareaFields = [
+                  { key: 'explicacao', label: 'Explicação' },
+                  { key: 'risco', label: 'Risco / Consequências' },
+                ];
+
+                return (
+                  <>
+                    {/* Campos simples (input) */}
+                    {simpleFields.map(({ key, label }) => (
+                      c[key] !== undefined && typeof c[key] === 'string' ? (
+                        <div key={key} className="mb-4">
+                          <label className={labelClass}>{label}</label>
+                          <input type="text" value={c[key] || ''} onChange={(e) => updateField(key, e.target.value)} className={inputClass} />
+                        </div>
+                      ) : null
+                    ))}
+
+                    {/* Campos textarea */}
+                    {textareaFields.map(({ key, label }) => (
+                      c[key] !== undefined && typeof c[key] === 'string' ? (
+                        <div key={key} className="mb-4">
+                          <label className={labelClass}>{label}</label>
+                          <textarea value={c[key] || ''} onChange={(e) => updateField(key, e.target.value)} rows={3} className={textareaClass} />
+                        </div>
+                      ) : null
+                    ))}
+
+                    {/* Estatística (objeto aninhado) */}
+                    {c.estatistica && typeof c.estatistica === 'object' && (
+                      <div className="mb-4 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
+                        <label className="block text-sm font-semibold text-amber-400 mb-3">Estatística</label>
+                        {['numero', 'contexto', 'explicacao'].map((campo) => (
+                          c.estatistica[campo] !== undefined ? (
+                            <div key={campo} className="mb-3">
+                              <label className={labelClass}>{campo === 'numero' ? 'Número / Dado' : campo === 'contexto' ? 'Contexto' : 'Explicação'}</label>
+                              {campo === 'explicacao' ? (
+                                <textarea
+                                  value={c.estatistica[campo] || ''}
+                                  onChange={(e) => setConteudoStoryEditavel({...c, estatistica: {...c.estatistica, [campo]: e.target.value}})}
+                                  rows={3}
+                                  className={textareaClass}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={c.estatistica[campo] || ''}
+                                  onChange={(e) => setConteudoStoryEditavel({...c, estatistica: {...c.estatistica, [campo]: e.target.value}})}
+                                  className={inputClass}
+                                />
+                              )}
+                            </div>
+                          ) : null
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Tópicos (array) */}
+                    {c.topicos && Array.isArray(c.topicos) && (
+                      <div className="mb-4">
+                        <label className={labelClass}>Tópicos</label>
+                        {c.topicos.map((topico, idx) => (
+                          <div key={idx} className="flex items-start gap-2 mb-2">
+                            <span className="text-amber-400 text-sm mt-2 font-bold min-w-[20px]">{idx + 1}.</span>
+                            <textarea
+                              value={topico}
+                              onChange={(e) => {
+                                const novos = [...c.topicos];
+                                novos[idx] = e.target.value;
+                                updateField('topicos', novos);
+                              }}
+                              rows={2}
+                              className={"flex-1 " + textareaClass}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Bullets (array) */}
+                    {c.bullets && Array.isArray(c.bullets) && (
+                      <div className="mb-4">
+                        <label className={labelClass}>Bullets</label>
+                        {c.bullets.map((bullet, idx) => (
+                          <div key={idx} className="flex items-start gap-2 mb-2">
+                            <span className="text-amber-400 text-sm mt-2 font-bold min-w-[20px]">{idx + 1}.</span>
+                            <textarea
+                              value={bullet}
+                              onChange={(e) => {
+                                const novos = [...c.bullets];
+                                novos[idx] = e.target.value;
+                                updateField('bullets', novos);
+                              }}
+                              rows={2}
+                              className={"flex-1 " + textareaClass}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Botões */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setMostrarEditorConteudo(false);
+                    setConteudoStoryEditavel(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarEditorConteudo(false);
+                    setLoadingImagem(true);
+                    gerarImagem(conteudoGerado, 'stories');
+                  }}
+                  className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 rounded-lg text-white font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Regerar Story
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* MODAL DE VISUALIZAÇÃO DA IMAGEM */}
         {mostrarImagemFull && imagemPreview && (
           <div
@@ -4644,29 +4932,25 @@ Crie agora:`;
                 className="w-full h-full object-contain rounded-lg shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               />
-              <div className="absolute -bottom-12 left-0 right-0 flex justify-center gap-4">
+              <div className="absolute -bottom-12 left-0 right-0 flex justify-center gap-3 flex-wrap">
                 <a
                   href={imagemPreview}
                   download="post-juriscontent.png"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-sm transition-all font-medium"
                 >
                   <Download className="w-4 h-4" />
-                  Baixar Imagem
+                  Baixar
                 </a>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (navigator.share) {
-                      navigator.share({ title: "Post Jurídico", url: imagemPreview });
-                    } else {
-                      window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank");
-                    }
+                    window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank");
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all font-medium"
                 >
-                  <Share2 className="w-4 h-4" />
-                  Compartilhar
+                  <MessageCircle className="w-4 h-4" />
+                  WhatsApp
                 </button>
                 <button
                   onClick={(e) => {
@@ -4674,35 +4958,10 @@ Crie agora:`;
                     navigator.clipboard.writeText(imagemPreview);
                     alert("Link copiado!");
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all font-medium"
                 >
                   <Link2 className="w-4 h-4" />
-                  Copiar Link
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (navigator.share) {
-                      navigator.share({ title: "Post Jurídico", url: imagemPreview });
-                    } else {
-                      window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(imagemPreview), "_blank");
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm transition-all"
-                >
-                  <Share2 className="w-4 h-4" />
-                  Compartilhar
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(imagemPreview);
-                    alert("Link copiado!");
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-all"
-                >
-                  <Link2 className="w-4 h-4" />
-                  Copiar Link
+                  Link
                 </button>
               </div>
             </div>
