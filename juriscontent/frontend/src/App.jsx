@@ -4924,7 +4924,7 @@ Crie agora:`;
         {/* MODAL DE CONFIGURAÇÕES */}
         {mostrarConfig && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-800 rounded-xl max-w-2xl w-full p-6 border border-slate-700">
+            <div className="bg-slate-800 rounded-xl max-w-2xl w-full p-6 border border-slate-700 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <Settings className="w-6 h-6 text-amber-400" />
