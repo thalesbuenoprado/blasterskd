@@ -6,7 +6,7 @@
 
 import { Share2, Link2, MoreVertical } from 'lucide-react';
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { Scale, Loader2, Eye, EyeOff, LogOut, Copy, Check, Image as ImageIcon, Download, X, Lightbulb, Users, Settings, Upload, Palette, TrendingUp, Flame, RefreshCw, Sparkles, Instagram, Facebook, Linkedin, Twitter, FileText, MessageCircle, Edit3, ZoomIn, Mail, Lock, User, Award, AlertCircle, CheckCircle, Camera, Save, Phone, Trash2, ExternalLink, Calendar, Tag, FolderOpen, ChevronUp, Clock } from 'lucide-react';
+import { Scale, Loader2, Eye, EyeOff, LogOut, Copy, Check, Image as ImageIcon, Download, X, Lightbulb, Users, Settings, Upload, Palette, TrendingUp, Flame, RefreshCw, Sparkles, Instagram, Facebook, Linkedin, Twitter, FileText, MessageCircle, Edit3, ZoomIn, Mail, Lock, User, Award, AlertCircle, CheckCircle, Camera, Save, Phone, Trash2, ExternalLink, Calendar, Tag, FolderOpen, ChevronUp, Clock, CreditCard, Crown, Zap, Star } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 // =====================================================
@@ -896,6 +896,7 @@ function AppContent() {
   const { user, perfil, loading, fazerLogout, minhasImagens, salvarImagemGerada } = useAuth();
   const [mostrarGaleria, setMostrarGaleria] = useState(false);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
+  const [mostrarPlanos, setMostrarPlanos] = useState(false);
 
   if (loading) {
     return (
@@ -924,6 +925,7 @@ function AppContent() {
         onLogout={fazerLogout}
         onAbrirGaleria={() => setMostrarGaleria(true)}
         onAbrirPerfil={() => setMostrarPerfil(true)}
+        onAbrirPlanos={() => setMostrarPlanos(true)}
         onSalvarImagem={salvarImagemGerada}
       />
 
@@ -935,6 +937,11 @@ function AppContent() {
       <PerfilUsuarioModal
         isOpen={mostrarPerfil}
         onClose={() => setMostrarPerfil(false)}
+      />
+
+      <PlanosModal
+        isOpen={mostrarPlanos}
+        onClose={() => setMostrarPlanos(false)}
       />
     </>
   );
@@ -1500,6 +1507,290 @@ function PerfilUsuarioModal({ isOpen, onClose }) {
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================
+// MODAL DE PLANOS E ASSINATURA
+// ====================================
+function PlanosModal({ isOpen, onClose }) {
+  const { fetchAuth, perfil } = useAuth();
+  const [planos, setPlanos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [assinatura, setAssinatura] = useState(null);
+  const [uso, setUso] = useState(null);
+  const [processando, setProcessando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      carregarDados();
+    }
+  }, [isOpen]);
+
+  const carregarDados = async () => {
+    setLoading(true);
+    setErro('');
+    try {
+      // Carregar planos e assinatura em paralelo
+      const [planosRes, assinaturaRes] = await Promise.all([
+        fetch('https://blasterskd.com.br/api/planos'),
+        fetchAuth('https://blasterskd.com.br/api/minha-assinatura')
+      ]);
+
+      const planosData = await planosRes.json();
+      const assinaturaData = await assinaturaRes.json();
+
+      if (planosData.success) {
+        setPlanos(planosData.planos || []);
+      }
+      if (assinaturaData.success) {
+        setAssinatura(assinaturaData.assinatura);
+        setUso(assinaturaData.uso);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar planos:', e);
+      setErro('Erro ao carregar informações');
+    }
+    setLoading(false);
+  };
+
+  const handleAssinar = async (planoSlug) => {
+    setProcessando(true);
+    setErro('');
+    try {
+      const response = await fetchAuth('https://blasterskd.com.br/api/criar-assinatura', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plano_slug: planoSlug })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.init_point) {
+          // Redirecionar para checkout do Mercado Pago
+          window.location.href = data.init_point;
+        } else {
+          // Plano grátis ativado
+          await carregarDados();
+        }
+      } else {
+        setErro(data.error || 'Erro ao processar assinatura');
+      }
+    } catch (e) {
+      setErro('Erro ao conectar com o servidor');
+    }
+    setProcessando(false);
+  };
+
+  const handleCancelar = async () => {
+    if (!confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
+
+    setProcessando(true);
+    try {
+      const response = await fetchAuth('https://blasterskd.com.br/api/cancelar-assinatura', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: 'Cancelado pelo usuário' })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await carregarDados();
+      } else {
+        setErro(data.error || 'Erro ao cancelar');
+      }
+    } catch (e) {
+      setErro('Erro ao conectar com o servidor');
+    }
+    setProcessando(false);
+  };
+
+  if (!isOpen) return null;
+
+  const planoAtual = perfil?.plano_atual || 'gratis';
+
+  const getIconePlano = (slug) => {
+    switch (slug) {
+      case 'gratis': return <Zap className="w-6 h-6" />;
+      case 'essencial': return <Star className="w-6 h-6" />;
+      case 'profissional': return <Award className="w-6 h-6" />;
+      case 'escritorio': return <Crown className="w-6 h-6" />;
+      default: return <Zap className="w-6 h-6" />;
+    }
+  };
+
+  const getCorPlano = (slug) => {
+    switch (slug) {
+      case 'gratis': return 'from-slate-500 to-slate-600';
+      case 'essencial': return 'from-blue-500 to-blue-600';
+      case 'profissional': return 'from-amber-500 to-amber-600';
+      case 'escritorio': return 'from-purple-500 to-purple-600';
+      default: return 'from-slate-500 to-slate-600';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden border border-slate-700">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            <Crown className="w-6 h-6 text-amber-400" />
+            <h2 className="text-xl font-bold text-white">Planos e Assinatura</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-lg">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Uso atual */}
+              {uso && (
+                <div className="mb-6 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-slate-300 font-medium">Seu uso este mês</span>
+                    <span className="text-amber-400 font-bold capitalize">{planoAtual}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="h-3 bg-slate-600 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all"
+                          style={{
+                            width: uso.limite === 0 ? '10%' : `${Math.min((uso.geracoes_usadas / uso.limite) * 100, 100)}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-white font-medium min-w-[100px] text-right">
+                      {uso.geracoes_usadas} / {uso.limite === 0 ? '∞' : uso.limite} posts
+                    </span>
+                  </div>
+                  {uso.restante !== -1 && uso.restante <= 3 && uso.restante > 0 && (
+                    <p className="mt-2 text-amber-400 text-sm">
+                      ⚠️ Restam apenas {uso.restante} gerações este mês
+                    </p>
+                  )}
+                  {uso.restante === 0 && (
+                    <p className="mt-2 text-red-400 text-sm">
+                      ❌ Você atingiu o limite! Faça upgrade para continuar gerando.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {erro && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  {erro}
+                </div>
+              )}
+
+              {/* Grid de Planos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {planos.map((plano) => {
+                  const isAtual = planoAtual === plano.slug;
+                  const recursos = typeof plano.recursos === 'string' ? JSON.parse(plano.recursos) : plano.recursos;
+
+                  return (
+                    <div
+                      key={plano.id}
+                      className={`relative rounded-xl p-5 border-2 transition-all ${
+                        isAtual
+                          ? 'border-amber-500 bg-amber-500/10'
+                          : 'border-slate-600 bg-slate-700/30 hover:border-slate-500'
+                      }`}
+                    >
+                      {isAtual && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+                          ATUAL
+                        </div>
+                      )}
+
+                      {/* Ícone e Nome */}
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getCorPlano(plano.slug)} flex items-center justify-center text-white mb-4`}>
+                        {getIconePlano(plano.slug)}
+                      </div>
+
+                      <h3 className="text-xl font-bold text-white mb-1">{plano.nome}</h3>
+                      <p className="text-slate-400 text-sm mb-4">{plano.descricao}</p>
+
+                      {/* Preço */}
+                      <div className="mb-4">
+                        <span className="text-3xl font-bold text-white">
+                          {plano.preco === 0 ? 'Grátis' : `R$ ${plano.preco}`}
+                        </span>
+                        {plano.preco > 0 && <span className="text-slate-400">/mês</span>}
+                      </div>
+
+                      {/* Recursos */}
+                      <ul className="space-y-2 mb-6">
+                        {recursos?.map((recurso, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm">
+                            <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+                            <span className="text-slate-300">{recurso}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Botão */}
+                      {isAtual ? (
+                        plano.slug !== 'gratis' && assinatura?.status === 'ativa' ? (
+                          <button
+                            onClick={handleCancelar}
+                            disabled={processando}
+                            className="w-full py-2.5 bg-slate-600 hover:bg-red-600/80 text-white rounded-lg font-medium transition-all disabled:opacity-50"
+                          >
+                            {processando ? 'Processando...' : 'Cancelar'}
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="w-full py-2.5 bg-slate-600 text-slate-400 rounded-lg font-medium cursor-not-allowed"
+                          >
+                            Plano Atual
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => handleAssinar(plano.slug)}
+                          disabled={processando}
+                          className={`w-full py-2.5 bg-gradient-to-r ${getCorPlano(plano.slug)} hover:opacity-90 text-white rounded-lg font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+                        >
+                          {processando ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CreditCard className="w-4 h-4" />
+                          )}
+                          {processando ? 'Processando...' : plano.preco === 0 ? 'Usar Grátis' : 'Assinar'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Info de pagamento */}
+              <div className="mt-6 p-4 bg-slate-700/30 rounded-xl border border-slate-600">
+                <div className="flex items-center gap-3 text-slate-300 text-sm">
+                  <CreditCard className="w-5 h-5 text-amber-400" />
+                  <span>Pagamento seguro via Mercado Pago • PIX, Cartão ou Boleto</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -2872,7 +3163,7 @@ function ConfiguracoesLogo({ user, onSaveLogo, onClose }) {
 // ====================================
 // COMPONENTE DE LOGIN
 // ====================================
-function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onSalvarImagem }) {
+function CriadorCompleto({ user, onLogout, onAbrirGaleria, onAbrirPerfil, onAbrirPlanos, onSalvarImagem }) {
   const { fetchAuth, perfil } = useAuth();
   // DADOS ESTÁTICOS
   const DADOS = {
@@ -3738,6 +4029,17 @@ Crie agora:`;
 
             if (!storyResponse.ok) {
               const errData = await storyResponse.json().catch(() => ({}));
+
+              // Verificar se é erro de limite de gerações
+              if (storyResponse.status === 403 && errData?.error?.includes('Limite')) {
+                clearInterval(timerGeracaoRef.current);
+                timerGeracaoRef.current = null;
+                setStatusGeracao('');
+                setLoadingImagem(false);
+                alert(`🚫 ${errData.error}\n\nVocê usou ${errData.usado}/${errData.limite} gerações do plano ${errData.plano}.\n\nFaça upgrade para continuar gerando conteúdo!`);
+                return;
+              }
+
               const isTimeout = errData?.details?.includes('timeout') || errData?.details?.includes('Timeout');
               if (isTimeout && tentativa < MAX_TENTATIVAS) {
                 console.log(`⚠️ Timeout na tentativa ${tentativa}, retentando...`);
@@ -3927,6 +4229,14 @@ Crie agora:`;
 
       if (!backendResponse.ok) {
         const errorData = await backendResponse.json();
+
+        // Verificar se é erro de limite de gerações
+        if (backendResponse.status === 403 && errorData?.error?.includes('Limite')) {
+          setLoadingImagem(false);
+          alert(`🚫 ${errorData.error}\n\nVocê usou ${errorData.usado}/${errorData.limite} gerações do plano ${errorData.plano}.\n\nFaça upgrade para continuar gerando conteúdo!`);
+          return;
+        }
+
         throw new Error(errorData.details || 'Erro ao processar imagem');
       }
 
@@ -4013,6 +4323,16 @@ Crie agora:`;
               >
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Perfil</span>
+              </button>
+            )}
+            {onAbrirPlanos && (
+              <button
+                onClick={onAbrirPlanos}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/30 rounded-lg text-amber-400 transition-all text-sm"
+                title="Ver Planos"
+              >
+                <Crown className="w-4 h-4" />
+                <span className="hidden sm:inline">Planos</span>
               </button>
             )}
             <button

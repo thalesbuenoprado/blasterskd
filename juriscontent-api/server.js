@@ -180,31 +180,37 @@ function drawMultilineText(ctx, lines, x, y, lineHeight, align = 'center') {
 // ================================================
 async function gerarConteudoIA(texto, tema, area, template) {
   const prompts = {
-    'voce-sabia': `Você é um especialista em marketing jurídico. Analise o conteúdo e crie um texto CURTO para Story do Instagram.
-
-CONTEÚDO ORIGINAL:
-${texto}
+    'voce-sabia': `TAREFA: Criar conteúdo EDUCATIVO para Instagram Story jurídico.
 
 TEMA: ${tema}
 ÁREA: ${area}
+CONTEXTO: ${texto}
+
+FORMATO OBRIGATÓRIO - Retorne EXATAMENTE este JSON:
+{
+  "pergunta": "Pergunta que desperta curiosidade (6-10 palavras)",
+  "topicos": [
+    "O QUE É: Definição clara e simples do conceito",
+    "QUEM TEM DIREITO: Quem pode se beneficiar ou está protegido",
+    "COMO FUNCIONA: Explicação prática do processo ou procedimento",
+    "PRAZO IMPORTANTE: Prazos legais, prescrição ou tempo limite",
+    "ATENÇÃO: Erro comum ou armadilha que as pessoas cometem"
+  ],
+  "conclusao": "Frase motivacional de empoderamento (50-70 chars)",
+  "dica": "Conselho prático que a pessoa pode aplicar hoje",
+  "destaque": "PROTEJA SEUS DIREITOS!"
+}
 
 REGRAS IMPORTANTES:
-1. O campo "resposta" deve ter NO MÁXIMO 180 caracteres
-2. A frase deve ser COMPLETA (terminar com ponto final)
-3. Seja direto e profissional
-4. NÃO repita "Você sabia" na resposta
+1. Cada tópico deve ensinar algo ÚTIL e ESPECÍFICO sobre "${tema}"
+2. Use linguagem simples - o público não é advogado
+3. Inclua números, prazos ou dados quando relevante
+4. Cada tópico: 60-90 caracteres (informativo mas conciso)
+5. EXATAMENTE 5 tópicos no array
+6. NÃO use emojis
+7. Retorne APENAS o JSON
 
-Retorne APENAS este JSON (sem markdown, sem explicações):
-{"pergunta":"${tema}","resposta":"TEXTO AQUI - máx 180 caracteres, frase completa","destaque":"CONHEÇA SEUS DIREITOS"}`,
-
-    'bullets': `Você é um especialista em marketing jurídico. Crie um texto CURTO para Story do Instagram.
-
-CONTEÚDO: ${texto}
-TEMA: ${tema}
-ÁREA: ${area}
-
-Retorne APENAS este JSON:
-{"headline":"Título curto sobre ${tema}","bullets":["Ponto 1 curto","Ponto 2 curto","Ponto 3 curto"],"cta":"Salve este post!"}`,
+JSON:`,
 
     'estatistica': `Você é um especialista em marketing jurídico para Instagram Stories.
 
@@ -220,31 +226,29 @@ INSTRUÇÕES:
 Retorne APENAS este JSON:
 {"headline":"Título impactante (8-12 palavras)","estatistica":{"numero":"DADO VARIADO","contexto":"O que representa (5-8 palavras)","explicacao":"Texto completo com 3-4 frases explicando o contexto, impacto e importância. Mínimo 250 caracteres. Seja informativo e direto."}}`,
 
-    'urgente': `Você é um especialista em marketing jurídico para Instagram Stories de ALERTA.
+    'urgente': `Você é um advogado especialista em ${area} criando um Story de ALERTA URGENTE para Instagram.
 
-CONTEÚDO ORIGINAL: ${texto}
 TEMA: ${tema}
 ÁREA: ${area}
+CONTEXTO: ${texto}
 
-INSTRUÇÕES:
-1. ALERTA: Título urgente e impactante (8-12 palavras) - use palavras como "ATENÇÃO", "CUIDADO", "URGENTE"
-2. PRAZO: Se houver prazo específico, coloque (ex: "30 dias", "Até dezembro", "5 anos"). Se não houver, deixe vazio ""
-3. RISCO: Explique as CONSEQUÊNCIAS de não agir. Texto de 3-4 frases (200-300 caracteres). Seja específico sobre o que a pessoa pode perder.
-4. AÇÃO: O que fazer AGORA (frase imperativa curta, 8-10 palavras)
+CRIE um alerta jurídico que gere URGÊNCIA e mostre que o leitor pode PERDER DIREITOS se não agir.
 
-Retorne APENAS este JSON:
-{"alerta":"ATENÇÃO: Título urgente sobre ${tema}","prazo":"Prazo específico ou vazio","risco":"Consequências detalhadas em 3-4 frases. Explique o que acontece se não agir, quais direitos perde, qual o impacto financeiro. Mínimo 200 caracteres.","acao":"Consulte um advogado especialista agora"}`,
+FORMATO OBRIGATÓRIO (JSON):
+{
+  "alerta": "ATENÇÃO: [frase urgente de 8-12 palavras sobre ${tema}]",
+  "prazo": "[prazo legal específico, ex: '2 anos', '5 anos', '30 dias', '90 dias'. Se não souber, use '']",
+  "risco": "[CONSEQUÊNCIAS graves em 3 frases curtas separadas por ponto. Ex: Você pode perder o direito de cobrar. O valor prescrito não pode ser recuperado. Milhares de trabalhadores já perderam esse direito.]",
+  "acao": "CONSULTE UM ADVOGADO ESPECIALISTA EM ${area.toUpperCase()}"
+}
 
-    'premium': `Você é um especialista em marketing jurídico. Crie um texto CURTO para Story do Instagram.
+REGRAS:
+- O campo "alerta" DEVE começar com "ATENÇÃO:" ou "CUIDADO:" ou "URGENTE:"
+- O campo "risco" deve ter EXATAMENTE 3 frases curtas e diretas (cada uma com 15-25 palavras), separadas por ponto
+- O campo "risco" deve mencionar CONSEQUÊNCIAS REAIS: perda de direito, prescrição, multa, prejuízo financeiro
+- NÃO use emojis
+- Retorne APENAS o JSON, sem explicação`,
 
-CONTEÚDO: ${texto}
-TEMA: ${tema}
-ÁREA: ${area}
-
-REGRAS: O campo "insight" deve ter NO MÁXIMO 180 caracteres e ser uma frase COMPLETA.
-
-Retorne APENAS este JSON:
-{"headline":"Título elegante sobre ${tema}","insight":"TEXTO AQUI - máx 180 caracteres, frase completa","conclusao":"Conclusão curta"}`
   };
 
   const prompt = prompts[template] || prompts['voce-sabia'];
@@ -302,6 +306,103 @@ function criarFallback(template, texto, tema) {
 // ================================================
 // ROTA: GERAR STORY (com IA integrada)
 // ================================================
+// ================================================
+// FUNÇÃO: Verificar e incrementar limite de gerações
+// ================================================
+async function verificarEIncrementarLimite(userId) {
+  try {
+    // Buscar perfil
+    const { data: perfil } = await supabase
+      .from('perfis')
+      .select('geracoes_mes, mes_referencia, plano_atual')
+      .eq('id', userId)
+      .single();
+
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    let geracoesUsadas = perfil?.geracoes_mes || 0;
+
+    // Resetar se mudou o mês
+    if (perfil?.mes_referencia !== mesAtual) {
+      geracoesUsadas = 0;
+    }
+
+    // Buscar limite do plano
+    const planoSlug = perfil?.plano_atual || 'gratis';
+    const { data: plano } = await supabase
+      .from('planos')
+      .select('limite_geracoes')
+      .eq('slug', planoSlug)
+      .single();
+
+    const limite = plano?.limite_geracoes ?? 3;
+
+    // Verificar se pode gerar (0 = ilimitado)
+    if (limite > 0 && geracoesUsadas >= limite) {
+      return {
+        permitido: false,
+        limite,
+        usado: geracoesUsadas,
+        restante: 0,
+        plano: planoSlug
+      };
+    }
+
+    // Incrementar contador
+    await supabase
+      .from('perfis')
+      .upsert({
+        id: userId,
+        geracoes_mes: geracoesUsadas + 1,
+        mes_referencia: mesAtual,
+        plano_atual: planoSlug
+      }, { onConflict: 'id' });
+
+    return {
+      permitido: true,
+      limite,
+      usado: geracoesUsadas + 1,
+      restante: limite === 0 ? -1 : limite - (geracoesUsadas + 1),
+      plano: planoSlug
+    };
+  } catch (error) {
+    console.error('Erro ao verificar limite:', error);
+    // Em caso de erro, permite (fail-open)
+    return { permitido: true, limite: 3, usado: 0, restante: 3, plano: 'gratis' };
+  }
+}
+
+// ================================================
+// ROTA: GERAR CONTEÚDO STORY (só IA, sem renderizar)
+// ================================================
+app.post('/api/gerar-conteudo-story', authMiddleware, async (req, res) => {
+  try {
+    const { texto, tema, area, template } = req.body;
+
+    if (!template) {
+      return res.status(400).json({ error: 'Template obrigatório' });
+    }
+
+    console.log('🤖 Gerando conteúdo IA para edição:', { template, area, tema });
+
+    let dadosProcessados = await gerarConteudoIA(texto, tema, area, template);
+
+    if (!dadosProcessados) {
+      console.log('⚠️ Usando fallback');
+      dadosProcessados = criarFallback(template, texto, tema);
+    }
+
+    console.log('✅ Conteúdo gerado para edição:', JSON.stringify(dadosProcessados));
+    res.json({ success: true, conteudo: dadosProcessados });
+
+  } catch (error) {
+    console.error('❌ Erro gerar conteúdo:', error);
+    res.status(500).json({ error: 'Erro ao gerar conteúdo', details: error.message });
+  }
+});
+
+// ================================================
+// ROTA: GERAR STORY (renderizar imagem)
+// ================================================
 app.post('/api/gerar-story', authMiddleware, async (req, res) => {
   try {
     const {
@@ -314,25 +415,42 @@ app.post('/api/gerar-story', authMiddleware, async (req, res) => {
       oab,
       telefone,
       instagram,
-      logo
+      logo,
+      conteudo_editado
     } = req.body;
 
     if (!template) {
       return res.status(400).json({ error: 'Template obrigatório' });
     }
 
-    console.log('📱 Gerando Story:', { template, area, tema, temLogo: !!logo });
-
-    // 1. Tentar gerar conteúdo via IA
-    let dadosProcessados = await gerarConteudoIA(texto, tema, area, template);
-    
-    // 2. Se falhar, usar fallback
-    if (!dadosProcessados) {
-      console.log('⚠️ Usando fallback');
-      dadosProcessados = criarFallback(template, texto, tema);
+    // Verificar limite de gerações
+    const limiteCheck = await verificarEIncrementarLimite(req.user.id);
+    if (!limiteCheck.permitido) {
+      return res.status(403).json({
+        error: 'Limite de gerações atingido',
+        limite: limiteCheck.limite,
+        usado: limiteCheck.usado,
+        plano: limiteCheck.plano,
+        upgrade_url: `${process.env.APP_URL}/planos`
+      });
     }
 
-    // 3. Enviar para Puppeteer
+    console.log('📱 Gerando Story:', { template, area, tema, temLogo: !!logo, editado: !!conteudo_editado, limite: limiteCheck });
+
+    // Se veio conteúdo editado, usa direto. Senão, gera via IA
+    let dadosProcessados;
+    if (conteudo_editado) {
+      console.log('✏️ Usando conteúdo editado pelo usuário');
+      dadosProcessados = conteudo_editado;
+    } else {
+      dadosProcessados = await gerarConteudoIA(texto, tema, area, template);
+      if (!dadosProcessados) {
+        console.log('⚠️ Usando fallback');
+        dadosProcessados = criarFallback(template, texto, tema);
+      }
+    }
+
+    // Enviar para Puppeteer
     const PUPPETEER_URL = process.env.PUPPETEER_URL || 'http://localhost:3002/render-story';
 
     const storyData = {
@@ -386,7 +504,8 @@ app.post('/api/gerar-story', authMiddleware, async (req, res) => {
       success: true,
       imageUrl: uploadResult.secure_url,
       template: template,
-      renderTimeMs: data.renderTimeMs
+      renderTimeMs: data.renderTimeMs,
+      conteudo: dadosProcessados
     });
 
   } catch (error) {
@@ -403,14 +522,26 @@ app.post('/api/gerar-story', authMiddleware, async (req, res) => {
 // ================================================
 app.post('/api/gerar-imagem', authMiddleware, async (req, res) => {
   try {
-    const { 
+    const {
       imageUrl, tema, area, nomeAdvogado, oab, instagram, formato, estilo, logo, bullets, conteudo,
       corPrimaria, corSecundaria, corAcento
     } = req.body;
 
     if (!imageUrl) return res.status(400).json({ error: 'URL da imagem obrigatória' });
 
-    console.log('🖼️ Gerando imagem Feed PREMIUM:', { formato, estilo, area });
+    // Verificar limite de gerações
+    const limiteCheck = await verificarEIncrementarLimite(req.user.id);
+    if (!limiteCheck.permitido) {
+      return res.status(403).json({
+        error: 'Limite de gerações atingido',
+        limite: limiteCheck.limite,
+        usado: limiteCheck.usado,
+        plano: limiteCheck.plano,
+        upgrade_url: `${process.env.APP_URL}/planos`
+      });
+    }
+
+    console.log('🖼️ Gerando imagem Feed PREMIUM:', { formato, estilo, area, limite: limiteCheck });
 
     // Paletas de cores melhoradas
     const paletas = {
@@ -771,6 +902,357 @@ app.post('/api/remover-fundo', authMiddleware, async (req, res) => {
 });
 
 const http = require("http");
+
+// ================================================
+// MERCADO PAGO - CONFIGURAÇÃO
+// ================================================
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+
+const mpClient = new MercadoPagoConfig({
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
+});
+
+// ================================================
+// ROTAS DE PAGAMENTO
+// ================================================
+
+// Listar planos disponíveis
+app.get('/api/planos', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('planos')
+      .select('*')
+      .eq('ativo', true)
+      .order('ordem');
+
+    if (error) throw error;
+
+    res.json({ success: true, planos: data });
+  } catch (error) {
+    console.error('Erro ao buscar planos:', error);
+    res.status(500).json({ error: 'Erro ao buscar planos' });
+  }
+});
+
+// Verificar limite de gerações do usuário
+app.get('/api/meu-limite', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data, error } = await supabase
+      .rpc('verificar_limite_geracoes', { p_user_id: userId });
+
+    if (error) throw error;
+
+    res.json({ success: true, limite: data });
+  } catch (error) {
+    console.error('Erro ao verificar limite:', error);
+    res.status(500).json({ error: 'Erro ao verificar limite' });
+  }
+});
+
+// Ver assinatura do usuário
+app.get('/api/minha-assinatura', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Buscar assinatura ativa
+    const { data: assinatura, error: errAssinatura } = await supabase
+      .from('assinaturas')
+      .select(`
+        *,
+        plano:planos(*)
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'ativa')
+      .single();
+
+    // Buscar perfil com dados de uso
+    const { data: perfil, error: errPerfil } = await supabase
+      .from('perfis')
+      .select('geracoes_mes, mes_referencia, plano_atual')
+      .eq('id', userId)
+      .single();
+
+    // Buscar plano atual
+    const planoSlug = perfil?.plano_atual || 'gratis';
+    const { data: plano } = await supabase
+      .from('planos')
+      .select('*')
+      .eq('slug', planoSlug)
+      .single();
+
+    // Resetar contador se mudou o mês
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    let geracoesUsadas = perfil?.geracoes_mes || 0;
+    if (perfil?.mes_referencia !== mesAtual) {
+      geracoesUsadas = 0;
+    }
+
+    res.json({
+      success: true,
+      assinatura: assinatura || null,
+      plano: plano || { nome: 'Grátis', slug: 'gratis', limite_geracoes: 3, preco: 0 },
+      uso: {
+        geracoes_usadas: geracoesUsadas,
+        limite: plano?.limite_geracoes || 3,
+        restante: plano?.limite_geracoes === 0 ? -1 : (plano?.limite_geracoes || 3) - geracoesUsadas
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar assinatura:', error);
+    res.status(500).json({ error: 'Erro ao buscar assinatura' });
+  }
+});
+
+// Criar checkout de assinatura
+app.post('/api/criar-assinatura', authMiddleware, async (req, res) => {
+  try {
+    const { plano_slug } = req.body;
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+
+    if (!plano_slug) {
+      return res.status(400).json({ error: 'Plano não informado' });
+    }
+
+    // Buscar plano
+    const { data: plano, error: errPlano } = await supabase
+      .from('planos')
+      .select('*')
+      .eq('slug', plano_slug)
+      .eq('ativo', true)
+      .single();
+
+    if (errPlano || !plano) {
+      return res.status(404).json({ error: 'Plano não encontrado' });
+    }
+
+    // Se for plano grátis, apenas atualiza o perfil
+    if (plano.preco === 0) {
+      await supabase
+        .from('perfis')
+        .update({ plano_atual: 'gratis' })
+        .eq('id', userId);
+
+      return res.json({
+        success: true,
+        message: 'Plano grátis ativado',
+        plano: plano
+      });
+    }
+
+    // Criar preferência de pagamento no Mercado Pago
+    const preference = new Preference(mpClient);
+
+    const preferenceData = {
+      items: [
+        {
+          id: plano.id,
+          title: `JurisContent - Plano ${plano.nome}`,
+          description: plano.descricao,
+          quantity: 1,
+          currency_id: 'BRL',
+          unit_price: parseFloat(plano.preco)
+        }
+      ],
+      payer: {
+        email: userEmail
+      },
+      back_urls: {
+        success: `${process.env.APP_URL}/pagamento/sucesso`,
+        failure: `${process.env.APP_URL}/pagamento/erro`,
+        pending: `${process.env.APP_URL}/pagamento/pendente`
+      },
+      auto_return: 'approved',
+      external_reference: JSON.stringify({
+        user_id: userId,
+        plano_id: plano.id,
+        plano_slug: plano.slug
+      }),
+      notification_url: process.env.WEBHOOK_URL,
+      statement_descriptor: 'JURISCONTENT',
+      expires: true,
+      expiration_date_from: new Date().toISOString(),
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
+    };
+
+    const response = await preference.create({ body: preferenceData });
+
+    console.log('Preferência criada:', response.id);
+
+    res.json({
+      success: true,
+      preference_id: response.id,
+      init_point: response.init_point, // URL do checkout
+      sandbox_init_point: response.sandbox_init_point // URL de teste
+    });
+
+  } catch (error) {
+    console.error('Erro ao criar assinatura:', error);
+    res.status(500).json({ error: 'Erro ao criar assinatura', details: error.message });
+  }
+});
+
+// Webhook do Mercado Pago
+app.post('/api/webhook-mercadopago', async (req, res) => {
+  try {
+    console.log('Webhook MP recebido:', JSON.stringify(req.body));
+
+    const { type, data } = req.body;
+
+    // Responder rapidamente para o MP
+    res.status(200).send('OK');
+
+    if (type === 'payment') {
+      const paymentId = data.id;
+
+      // Buscar detalhes do pagamento
+      const payment = new Payment(mpClient);
+      const paymentInfo = await payment.get({ id: paymentId });
+
+      console.log('Pagamento:', paymentInfo.status, paymentInfo.id);
+
+      // Parsear external_reference
+      let externalRef = {};
+      try {
+        externalRef = JSON.parse(paymentInfo.external_reference || '{}');
+      } catch (e) {
+        console.log('Erro ao parsear external_reference');
+      }
+
+      const userId = externalRef.user_id;
+      const planoId = externalRef.plano_id;
+      const planoSlug = externalRef.plano_slug;
+
+      if (!userId) {
+        console.log('User ID não encontrado no external_reference');
+        return;
+      }
+
+      // Registrar pagamento
+      await supabase.from('pagamentos').insert({
+        user_id: userId,
+        valor: paymentInfo.transaction_amount,
+        mp_payment_id: paymentInfo.id.toString(),
+        mp_status: paymentInfo.status,
+        mp_status_detail: paymentInfo.status_detail,
+        mp_payment_type: paymentInfo.payment_type_id,
+        mp_payment_method: paymentInfo.payment_method_id,
+        payer_email: paymentInfo.payer?.email,
+        payer_name: paymentInfo.payer?.first_name,
+        status: paymentInfo.status === 'approved' ? 'aprovado' : 'pendente',
+        processado_em: paymentInfo.status === 'approved' ? new Date().toISOString() : null
+      });
+
+      // Se aprovado, ativar assinatura
+      if (paymentInfo.status === 'approved') {
+        console.log('Pagamento aprovado! Ativando plano:', planoSlug);
+
+        // Calcular data de fim (30 dias)
+        const dataInicio = new Date();
+        const dataFim = new Date(dataInicio);
+        dataFim.setDate(dataFim.getDate() + 30);
+
+        // Criar ou atualizar assinatura
+        await supabase
+          .from('assinaturas')
+          .upsert({
+            user_id: userId,
+            plano_id: planoId,
+            status: 'ativa',
+            data_inicio: dataInicio.toISOString(),
+            data_fim: dataFim.toISOString(),
+            data_proxima_cobranca: dataFim.toISOString(),
+            mp_payer_id: paymentInfo.payer?.id?.toString()
+          }, {
+            onConflict: 'user_id'
+          });
+
+        // Atualizar plano no perfil
+        await supabase
+          .from('perfis')
+          .update({
+            plano_atual: planoSlug,
+            geracoes_mes: 0, // Resetar contador
+            mes_referencia: new Date().toISOString().slice(0, 7)
+          })
+          .eq('id', userId);
+
+        console.log('Plano ativado com sucesso para user:', userId);
+      }
+    }
+
+  } catch (error) {
+    console.error('Erro no webhook:', error);
+  }
+});
+
+// Cancelar assinatura
+app.post('/api/cancelar-assinatura', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { motivo } = req.body;
+
+    // Buscar assinatura ativa
+    const { data: assinatura, error: errAssinatura } = await supabase
+      .from('assinaturas')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'ativa')
+      .single();
+
+    if (errAssinatura || !assinatura) {
+      return res.status(404).json({ error: 'Nenhuma assinatura ativa encontrada' });
+    }
+
+    // Atualizar assinatura como cancelada
+    await supabase
+      .from('assinaturas')
+      .update({
+        status: 'cancelada',
+        cancelada_em: new Date().toISOString(),
+        motivo_cancelamento: motivo || 'Cancelado pelo usuário'
+      })
+      .eq('id', assinatura.id);
+
+    // Voltar para plano grátis
+    await supabase
+      .from('perfis')
+      .update({ plano_atual: 'gratis' })
+      .eq('id', userId);
+
+    res.json({
+      success: true,
+      message: 'Assinatura cancelada. Você ainda pode usar até o fim do período pago.'
+    });
+
+  } catch (error) {
+    console.error('Erro ao cancelar:', error);
+    res.status(500).json({ error: 'Erro ao cancelar assinatura' });
+  }
+});
+
+// Histórico de pagamentos
+app.get('/api/meus-pagamentos', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data, error } = await supabase
+      .from('pagamentos')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+
+    res.json({ success: true, pagamentos: data });
+  } catch (error) {
+    console.error('Erro ao buscar pagamentos:', error);
+    res.status(500).json({ error: 'Erro ao buscar pagamentos' });
+  }
+});
 
 app.all("/api/n8n/*", (req, res) => {
   const n8nPath = req.path.replace("/api/n8n", "");
